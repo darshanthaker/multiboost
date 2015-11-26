@@ -1,0 +1,1 @@
+/usr/bin/c++       CMakeFiles/multiboost.dir/src/main.cpp.o  -o multiboost -rdynamic libMultiBoostLib.a libBzip2Lib.a 

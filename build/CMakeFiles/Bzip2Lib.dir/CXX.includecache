@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home1/03726/dbthaker/MultiBoost-1.2.02/src/Bzip2/Bzip2Wrapper.cpp
+Bzip2Wrapper.h
+/home1/03726/dbthaker/MultiBoost-1.2.02/src/Bzip2/Bzip2Wrapper.h
+
+/home1/03726/dbthaker/MultiBoost-1.2.02/src/Bzip2/Bzip2Wrapper.h
+bzlib.h
+/home1/03726/dbthaker/MultiBoost-1.2.02/src/Bzip2/bzlib.h
+fstream
+-
+iostream
+-
+string.h
+-
+stdlib.h
+-
+
+/home1/03726/dbthaker/MultiBoost-1.2.02/src/Bzip2/bzlib.h
+stdio.h
+-
+windows.h
+-
+
