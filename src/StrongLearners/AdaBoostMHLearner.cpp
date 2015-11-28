@@ -270,6 +270,7 @@ namespace MultiBoost {
         // Starting the AdaBoost main loop
         ///////////////////////////////////////////////////////////////////////
 //        _currentMinT = startingIteration; // early stopping
+        //TODO: Start timer here
 
 		if (_earlyStoppingDone)
 			startingIteration = _numIterations;
@@ -389,6 +390,7 @@ namespace MultiBoost {
             } // check for maxtime
             delete pWeakHypothesis;
         }  // loop on iterations
+        //TODO: Timer stop
         /////////////////////////////////////////////////////////
 
         // write the footer of the strong hypothesis file

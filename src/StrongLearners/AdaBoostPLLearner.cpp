@@ -167,11 +167,11 @@ namespace MultiBoost {
             BaseLearner::RegisteredLearners().getLearner("ConstantLearner");
 
         // get the training input data, and load it
-
         InputData* pTrainingData = pWeakHypothesisSource->createInputData();
         pTrainingData->initOptions(args);
         pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
-                
+        printf("size is %d\n", pTrainingData->getNumExamples());
+        
         // get the testing input data, and load it
         InputData* pTestData = NULL;
         if ( !_testFileName.empty() )
