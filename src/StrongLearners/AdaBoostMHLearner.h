@@ -83,6 +83,10 @@ namespace MultiBoost {
          */
         virtual void run(const nor_utils::Args& args);
 
+        virtual vector<BaseLearner*> getHypotheses();
+
+        virtual vector<AlphaReal> getErrors();
+
         /**
          * For SoftCascade
          * \param args The arguments provided by the command line with all
@@ -205,6 +209,7 @@ namespace MultiBoost {
                            OutputInfo* pOutInfo);
         
         vector<BaseLearner*>  _foundHypotheses; //!< The list of the hypotheses found.
+        vector<AlphaReal> _foundErrors; //!< The list of the errors of the hypotheses found.
         
         string  _baseLearnerName; //!< The name of the basic learner used by AdaBoost. 
         string  _shypFileName; //!< File name of the strong hypothesis.

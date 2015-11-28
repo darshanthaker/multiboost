@@ -149,6 +149,14 @@ namespace MultiBoost {
                 
     }
 
+    vector<BaseLearner*> AdaBoostMHLearner::getHypotheses() {
+        return _foundHypotheses;
+    }
+
+    vector<AlphaReal> AdaBoostMHLearner::getErrors() {
+        return _foundErrors;
+    }
+
     // -----------------------------------------------------------------------------------
 
     void AdaBoostMHLearner::run(const nor_utils::Args& args)
@@ -232,7 +240,6 @@ namespace MultiBoost {
         // otherwise just return 0
         int startingIteration = resumeWeakLearners(pTrainingData);
 
-
         Serialization ss(_shypFileName, _isShypCompressed );
         ss.writeHeader(_baseLearnerName); // this must go after resumeProcess has been called
 
@@ -314,6 +321,8 @@ namespace MultiBoost {
             // Updates the weights and returns the edge
             AlphaReal gamma = updateWeights(pTrainingData, pWeakHypothesis);
 
+
+            _foundErrors.push_back(pWeakHypothesis->getAlpha());
             if (_verbose > 1)
             {
                 cout << setprecision(5)
