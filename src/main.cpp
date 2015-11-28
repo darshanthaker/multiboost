@@ -393,6 +393,9 @@ int main(int argc, const char* argv[])
     
     // for SoftCascade
     SoftCascadeLearner::declareBaseArguments(args);
+
+    // for AdaBoostPLLearner
+    AdaBoostPLLearner::declareBaseArguments(args);
     //////////////////////////////////////////////////////////////////////////
     // Options
         

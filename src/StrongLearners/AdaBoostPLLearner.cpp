@@ -34,6 +34,7 @@
 #include <ctime> // for time
 #include <cmath> // for exp
 #include <fstream> // for ofstream of the step-by-step data
+#include <iostream>
 #include <limits>
 #include <iomanip> // setprecision
 
@@ -54,6 +55,11 @@ namespace MultiBoost {
 
     void AdaBoostPLLearner::getArgs(const nor_utils::Args& args)
     {
+
+        ///////////////////////////////////////////////////
+        // Number of workers
+        if ( args.hasArgument("nworkers") )
+            args.getValue("nworkers", 0, _nWorkers);
 
         if ( args.hasArgument("verbose") )
             args.getValue("verbose", 0, _verbose);
@@ -146,8 +152,62 @@ namespace MultiBoost {
         if ( args.hasArgument("weights") ) {
             args.getValue("weights", 0, _weightFile );
         }
-                
     }
+
+    // -----------------------------------------------------------------------------------
+    void AdaBoostPLLearner::createPartitions(const nor_utils::Args& args) {
+        // Partition the original input_data file into multiple files
+        // Call createInputData, initoptions, and load on these files and store
+        // the result in a global array of inputData pointers.
+        // The global array should be malloced in this method
+        partition_data = new PartitionsData(_nWorkers); 
+
+        for (int i = 0; i < _nWorkers; i++) {
+            string result; 
+            ostringstream convert;   // stream used for the conversion
+            convert << i;
+            result = convert.str();
+            string newName = _trainFileName.substr(0, _trainFileName.find(".arff"));
+            partition_data->fileNames[i] = newName + result + ".arff";
+            partition_data->outfiles[i].open(partition_data->fileNames[i].c_str());
+        }
+       
+        ifstream infile; 
+        string data;
+        infile.open(_trainFileName.c_str());
+        while (data.compare("@DATA") != 0) {
+            getline(infile, data);
+            for (int i = 0; i < _nWorkers; i++) {
+                partition_data->outfiles[i] << data << '\n'; 
+            }
+        }
+
+        int counter = 0;
+        while (!infile.eof()) {
+            getline(infile, data);
+            partition_data->outfiles[counter % _nWorkers] << data << '\n';
+            counter++;
+        }
+
+        //Close all the file streams
+        infile.close();
+        for (int j = 0; j < _nWorkers; j++) {
+            partition_data->outfiles[j].close();
+        }
+
+        for (int k = 0; k < _nWorkers; k++) {
+            string fileName = partition_data->fileNames[k];
+            partition_data->partitions[k] = new InputData();
+            partition_data->partitions[k]->initOptions(args);
+            partition_data->partitions[k]->load(fileName, IT_TRAIN, _verbose);
+        }
+    }
+    // -----------------------------------------------------------------------------------
+   
+    // -----------------------------------------------------------------------------------
+    void AdaBoostPLLearner::deletePartitions() {
+    }
+    // -----------------------------------------------------------------------------------
 
     // -----------------------------------------------------------------------------------
 
@@ -166,12 +226,14 @@ namespace MultiBoost {
         BaseLearner* pConstantWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner("ConstantLearner");
 
+        createPartitions(args);
+
         // get the training input data, and load it
         InputData* pTrainingData = pWeakHypothesisSource->createInputData();
         pTrainingData->initOptions(args);
-        pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
-        printf("size is %d\n", pTrainingData->getNumExamples());
-        
+        //pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
+        pTrainingData->load(partition_data->fileNames[0], IT_TRAIN, _verbose);
+
         // get the testing input data, and load it
         InputData* pTestData = NULL;
         if ( !_testFileName.empty() )

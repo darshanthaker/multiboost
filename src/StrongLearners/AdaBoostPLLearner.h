@@ -54,6 +54,25 @@ namespace MultiBoost {
     class BaseLearner;
     class InputData;
     class Serialization;
+
+    class PartitionsData {
+    public:
+        InputData **partitions;
+        ofstream *outfiles; 
+        string *fileNames;
+
+        PartitionsData(int nWorkers) {
+            partitions = new InputData*[nWorkers];
+            outfiles = new ofstream[nWorkers];
+            fileNames = new string[nWorkers];
+        }
+
+        ~PartitionsData() {
+            delete partitions;
+            delete outfiles;
+            delete fileNames;
+        }
+    };
     
     /**
      * The AdaBoost learner. This class performs the meta-learning
@@ -63,6 +82,7 @@ namespace MultiBoost {
     class AdaBoostPLLearner : public GenericStrongLearner
     {
     public:
+        PartitionsData *partition_data;
         
         /**
          * The constructor. It initializes the variables and sets them using the
@@ -72,7 +92,12 @@ namespace MultiBoost {
          */
     AdaBoostPLLearner()
         : _numIterations(0), _maxTime(-1), _theta(0), _verbose(1), _smallVal(1E-10),
-            _resumeShypFileName(""), _outputInfoFile(""), _weightFile(""), _withConstantLearner(false), _fastResumeProcess(true) {}
+            _resumeShypFileName(""), _outputInfoFile(""), _weightFile(""), _withConstantLearner(false), _fastResumeProcess(true), _nWorkers(0) {}
+
+        static void declareBaseArguments(nor_utils::Args& args) {
+            args.setGroup("AdaBoostPL Algorithm Options");
+            args.declareArgument("nworkers", "number of workers", 1, "<number>" );
+        }
         
         /**
          * Start the learning process.
@@ -82,6 +107,11 @@ namespace MultiBoost {
          * \date 10/11/2005
          */
         virtual void run(const nor_utils::Args& args);
+
+        // TODO: DOCUMENTATION
+        virtual void createPartitions(const nor_utils::Args& args);
+
+        virtual void deletePartitions(); 
 
         /**
          * For SoftCascade
@@ -216,6 +246,7 @@ namespace MultiBoost {
         int     _numIterations;
         int     _maxTime; //!< Time limit for the whole processing. Default: no time limit (-1).
         AlphaReal  _theta; //!< the value of theta. Default = 0.
+        int _nWorkers;
         
         /**
          * Verbose level.
