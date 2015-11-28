@@ -150,6 +150,7 @@
 #include "IO/InputData.h" // for --encode
 #include "WeakLearners/ParasiteLearner.h" // for --encode
 #include "StrongLearners/AdaBoostMHLearner.h" // for --encode
+#include "StrongLearners/AdaBoostPLLearner.h"
 #include "StrongLearners/SoftCascadeLearner.h" // for declareBaseArguments
 #include "StrongLearners/VJCascadeLearner.h" // for declareBaseArguments
 #include "StrongLearners/ArcGVLearner.h" // for declareBaseArguments

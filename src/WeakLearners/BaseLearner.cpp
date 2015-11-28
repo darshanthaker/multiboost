@@ -38,6 +38,7 @@
 #include "StrongLearners/AdaBoostMHLearner.h"
 //#include "StrongLearners/BrownBoostLearner.h"
 //#include "StrongLearners/LogitBoostLearner.h"
+#include "StrongLearners/AdaBoostPLLearner.h"
 #include "StrongLearners/ArcGVLearner.h"
 #include "StrongLearners/FilterBoostLearner.h"
 #include "StrongLearners/VJCascadeLearner.h"
@@ -131,6 +132,8 @@ namespace MultiBoost {
             sHypothesis = new VJCascadeLearner();
         } else if ( sHypothesisName.compare( "SoftCascade") == 0) {
             sHypothesis = new SoftCascadeLearner();
+        } else if (sHypothesisName.compare("AdaBoostPL") == 0) {
+            sHypothesis = new AdaBoostPLLearner();
         } else {
             cout << "Unknown strong learner!!!!" << endl;
             exit( -1 );
