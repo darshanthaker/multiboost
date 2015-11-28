@@ -211,6 +211,12 @@ namespace MultiBoost {
 
     // -----------------------------------------------------------------------------------
 
+    void* startWorker(void* id)  
+    {
+	int tid =  *((int*) id);
+	
+    }
+    
     void AdaBoostPLLearner::run(const nor_utils::Args& args)
     {
         // load the arguments
@@ -228,11 +234,26 @@ namespace MultiBoost {
 
         createPartitions(args);
 
+	pthread_t threads[_nWorkers];
+
+	pthread_barrier_init(&barrier, NULL, _nWorkers + 1);
+
+	for (int tid = 0; tid < _nWorkers; tid++)
+	{		
+		pthread_create(&threads[i], NULL, startRoutine, (void*) &tid );
+			
+	}	
+	pthread_barrier_wait(&barrier);
+
         // get the training input data, and load it
         InputData* pTrainingData = pWeakHypothesisSource->createInputData();
         pTrainingData->initOptions(args);
         //pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
         pTrainingData->load(partition_data->fileNames[0], IT_TRAIN, _verbose);
+
+
+
+	
 
         // get the testing input data, and load it
         InputData* pTestData = NULL;

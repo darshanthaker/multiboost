@@ -39,9 +39,11 @@
 #ifndef __ADABOOST_PL_LEARNER_H
 #define __ADABOOST_PL_LEARNER_H
 
+#include <vector>
 #include "StrongLearners/GenericStrongLearner.h"
 #include "Utils/Args.h"
 #include "Defaults.h"
+#include <pthreads.h>
 
 using namespace std;
 
@@ -74,6 +76,24 @@ namespace MultiBoost {
         }
     };
     
+
+    class WeakOutput{
+    public:
+	vector<BaseLearner*> hypotheses;
+	vector<AlphaReal> alphas;
+	
+	WeakOutput(vector<BaseLearner*> bl, vector<AlphaReal> alpha_list){
+	    hypotheses = bl;
+	    alphas = alphalist;
+	}
+
+	~WeakOutput(){
+	   delete hypotheses;
+	   delete alphas; 
+	}
+	
+    };
+
     /**
      * The AdaBoost learner. This class performs the meta-learning
      * by calling the weak learners and updating the weights.
