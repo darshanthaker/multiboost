@@ -139,7 +139,8 @@ namespace MultiBoost {
         virtual void createPartitions(const nor_utils::Args& args);
 
         virtual void deletePartitions(); 
-
+	
+	virtual void runOrig(const nor_utils::Args& args);
         /**
          * For SoftCascade
          * \param args The arguments provided by the command line with all
