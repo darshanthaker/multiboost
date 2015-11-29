@@ -79,8 +79,7 @@ namespace MultiBoost {
 
     class WeakOutput{
     public:
-	    vector<BaseLearner*> hypotheses;
-	    vector<AlphaReal> alphas;
+	    vector<BaseLearner*> weakHypotheses;
 	
 	    WeakOutput() {
 	        //hypotheses = new vector<BaseLearner*>();
@@ -89,7 +88,6 @@ namespace MultiBoost {
 
 	    ~WeakOutput() {
 	        hypotheses.clear();
-            alphas.clear();
 	    }
 	
     };
