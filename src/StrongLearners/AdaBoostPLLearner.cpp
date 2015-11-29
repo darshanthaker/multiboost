@@ -46,11 +46,15 @@
 
 #include "WeakLearners/BaseLearner.h"
 #include "StrongLearners/AdaBoostPLLearner.h"
+#include "StrongLearners/AdaBoostMHLearner.h"
 
 #include "Classifiers/AdaBoostMHClassifier.h"
 
+pthread_barrier_t workerBarrier; 
 namespace MultiBoost {
 
+    PartitionsData *partition_data;
+    WeakOutput **weakOutputs;
     // -----------------------------------------------------------------------------------
 
     void AdaBoostPLLearner::getArgs(const nor_utils::Args& args)
@@ -211,49 +215,67 @@ namespace MultiBoost {
 
     // -----------------------------------------------------------------------------------
 
-    void* startWorker(void* id)  
+    void* startWorker(void* arg)  
     {
-	int tid =  *((int*) id);
-	
+	    ThreadInfo *info = (ThreadInfo *) arg;
+        int tid = info->tid;
+        printf("[startWorker] tid = %d\n", tid);
+        int numIterations = info->numIterations;
+        string trainFileName = partition_data->fileNames[tid];
+        InputData* pTrainingData = partition_data->partitions[tid];
+        //GenericStrongLearner*  pModel = info->base;
+        AdaBoostMHLearner *MHLearner = new AdaBoostMHLearner();
+        printf("[startWorker] about to run MHLearner\n");
+        MHLearner->run(info->args, pTrainingData, trainFileName,
+                      numIterations, weakOutputs[tid]->hypotheses);
+                
+        printf("[startWorker] done with MHLearner\n");
+        pthread_barrier_wait(&workerBarrier);
+        pthread_exit(NULL);	
     }
     
     void AdaBoostPLLearner::run(const nor_utils::Args& args)
     {
         // load the arguments
         this->getArgs(args);
+    
+        weakOutputs = new WeakOutput*[_nWorkers];
 
+        for (int i = 0; i < _nWorkers; i++) {
+            weakOutputs[i] = new WeakOutput();
+        }
         // get the registered weak learner (type from name)
         BaseLearner* pWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner(_baseLearnerName);
+        //GenericStrongLearner *pModel = pWeakHypothesisSource->createGenericStrongLearner( args );
         // initialize learning options; normally it's done in the strong loop
         // also, here we do it for Product learners, so input data can be created
         pWeakHypothesisSource->initLearningOptions(args);
 
-        BaseLearner* pConstantWeakHypothesisSource = 
-            BaseLearner::RegisteredLearners().getLearner("ConstantLearner");
-
+        /*BaseLearner* pConstantWeakHypothesisSource = 
+            BaseLearner::RegisteredLearners().getLearner("ConstantLearner"); */
         createPartitions(args);
 
-	pthread_t threads[_nWorkers];
+	    pthread_t threads[_nWorkers];
+        int tid;
 
-	pthread_barrier_init(&barrier, NULL, _nWorkers + 1);
+	    if (pthread_barrier_init(&workerBarrier, NULL, _nWorkers + 1) != 0) {
+            printf("\nbarrier init failed\n");
+            return;
+        }
 
-	for (int tid = 0; tid < _nWorkers; tid++)
-	{		
-		pthread_create(&threads[i], NULL, startRoutine, (void*) &tid );
-			
-	}	
-	pthread_barrier_wait(&barrier);
+    	for (tid = 0; tid < _nWorkers; tid++)
+	    {		
+            ThreadInfo *threadInfo = new ThreadInfo(tid, args, _numIterations);
+		    pthread_create(&threads[tid], NULL, startWorker, (void*) threadInfo);
+	    }	
+	    pthread_barrier_wait(&workerBarrier);
 
-        // get the training input data, and load it
-        InputData* pTrainingData = pWeakHypothesisSource->createInputData();
+        // get the training input data, and load it - THIS SHOULD BE DONE ON THREADS
+        /*InputData* pTrainingData = pWeakHypothesisSource->createInputData();
         pTrainingData->initOptions(args);
-        //pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
-        pTrainingData->load(partition_data->fileNames[0], IT_TRAIN, _verbose);
-
-
-
-	
+        pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
+        //pTrainingData->load(partition_data->fileNames[0], IT_TRAIN, _verbose);
 
         // get the testing input data, and load it
         InputData* pTestData = NULL;
@@ -493,7 +515,7 @@ namespace MultiBoost {
             delete pOutInfo;
 
         if (_verbose > 0)
-            cout << "Learning completed." << endl;
+            cout << "Learning completed." << endl;*/
     }
 
     // -------------------------------------------------------------------------

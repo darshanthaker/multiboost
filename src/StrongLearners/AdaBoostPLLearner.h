@@ -43,7 +43,7 @@
 #include "StrongLearners/GenericStrongLearner.h"
 #include "Utils/Args.h"
 #include "Defaults.h"
-#include <pthreads.h>
+#include <pthread.h>
 
 using namespace std;
 
@@ -79,19 +79,28 @@ namespace MultiBoost {
 
     class WeakOutput{
     public:
-	vector<BaseLearner*> hypotheses;
-	vector<AlphaReal> alphas;
+	    vector<BaseLearner*> hypotheses;
+	    vector<AlphaReal> alphas;
 	
-	WeakOutput(vector<BaseLearner*> bl, vector<AlphaReal> alpha_list){
-	    hypotheses = bl;
-	    alphas = alphalist;
-	}
+	    WeakOutput() {
+	        //hypotheses = new vector<BaseLearner*>();
+	        //alphas = new vector<AlphaReal>();
+	    }
 
-	~WeakOutput(){
-	   delete hypotheses;
-	   delete alphas; 
-	}
+	    ~WeakOutput() {
+	        hypotheses.clear();
+            alphas.clear();
+	    }
 	
+    };
+
+    class ThreadInfo {
+    public:
+        int tid;
+        const nor_utils::Args& args;
+        int numIterations;
+        
+        ThreadInfo(int tid, const nor_utils::Args& args, int numIterations) : tid(tid), args(args), numIterations(numIterations) {};
     };
 
     /**
@@ -102,8 +111,6 @@ namespace MultiBoost {
     class AdaBoostPLLearner : public GenericStrongLearner
     {
     public:
-        PartitionsData *partition_data;
-        
         /**
          * The constructor. It initializes the variables and sets them using the
          * information provided by the arguments passed. They are parsed

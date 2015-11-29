@@ -912,9 +912,11 @@ namespace MultiBoost {
         // get the registered weak learner (type from name)
         BaseLearner* pWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner(baseLearnerName);
+        printf("[MH] Got the registered weaklearner\n");
         // initialize learning options; normally it's done in the strong loop
         // also, here we do it for Product learners, so input data can be created
         pWeakHypothesisSource->initLearningOptions(args);
+        printf("[MH] Init the learning options\n");
                 
         BaseLearner* pConstantWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner("ConstantLearner");
@@ -931,12 +933,14 @@ namespace MultiBoost {
         {
             if (_verbose > 0)
                 cout << (t+1) << ", " << flush;
-                        
+            printf("[run] about to create base learner\n");            
             BaseLearner* pWeakHypothesis = pWeakHypothesisSource->create();
+            printf("[run] created base learner\n");
             pWeakHypothesis->initLearningOptions(args);
             //pTrainingData->clearIndexSet();
                         
             pWeakHypothesis->setTrainingData(pTrainingData);
+            printf("[run] set training data\n");
                         
             AlphaReal energy = pWeakHypothesis->run();
                         
