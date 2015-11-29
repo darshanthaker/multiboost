@@ -43,7 +43,7 @@ add_library(MultiBoostLib STATIC ${project_SRCS})
 add_executable(multiboost "${BASEPATH}/main.cpp")
 
 # adding library to the exec
-target_link_libraries(multiboost MultiBoostLib Bzip2Lib)
+target_link_libraries(multiboost MultiBoostLib Bzip2Lib pthread)
 
 
 

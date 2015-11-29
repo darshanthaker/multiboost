@@ -234,9 +234,19 @@ namespace MultiBoost {
         pthread_exit(NULL);	
     }
     
-    void AdaboostPLLearner::runOrig(const nor_utils::Args& args)
+    void AdaBoostPLLearner::runOrig(const nor_utils::Args& args)
     {
-	InputData* pTrainingData = pWeakHypothesisSource->createInputData();
+        BaseLearner* pConstantWeakHypothesisSource = 
+            BaseLearner::RegisteredLearners().getLearner("ConstantLearner"); 
+        BaseLearner* pWeakHypothesisSource = 
+            BaseLearner::RegisteredLearners().getLearner(_baseLearnerName);
+        //GenericStrongLearner *pModel = pWeakHypothesisSource->createGenericStrongLearner( args );
+        // initialize learning options; normally it's done in the strong loop
+        // also, here we do it for Product learners, so input data can be created
+        pWeakHypothesisSource->initLearningOptions(args);
+
+
+	    InputData* pTrainingData = pWeakHypothesisSource->createInputData();
         pTrainingData->initOptions(args);
         pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
         //pTrainingData->load(partition_data->fileNames[0], IT_TRAIN, _verbose);
