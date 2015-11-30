@@ -937,10 +937,8 @@ namespace MultiBoost {
                         
             pWeakHypothesis->setTrainingData(pTrainingData);
 
-            printf("pWeakHypothesis = %p\n", pWeakHypothesis);
                         
             AlphaReal energy = pWeakHypothesis->run();
-            printf("[MH] ran weak hypothesis\n");
                         
             //float gamma = pWeakHypothesis->getEdge();
             //cout << gamma << endl;

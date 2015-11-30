@@ -69,12 +69,12 @@ namespace MultiBoost {
             args.getValue("verbose", 0, _verbose);
 
         // The file with the step-by-step information
-        
+
         if ( args.hasArgument("outputinfo") )
             args.getValue("outputinfo", 0, _outputInfoFile);
         else
             _outputInfoFile = OUTPUT_NAME;
-                
+
         ///////////////////////////////////////////////////
         // get the output strong hypothesis file name, if given
         if ( args.hasArgument("shypname") )
@@ -128,7 +128,7 @@ namespace MultiBoost {
             args.getValue("traintest", 0, _trainFileName);
             args.getValue("traintest", 1, _testFileName);
             args.getValue("traintest", 2, _numIterations);
-            
+
             // --earlystopping <minIterations> <smoothingWindowRate> <maxLookaheadRate>
             if ( args.hasArgument("earlystopping") )
             {
@@ -136,12 +136,12 @@ namespace MultiBoost {
                 args.getValue("earlystopping", 0, _earlyStoppingMinIterations);
                 args.getValue("earlystopping", 1, _earlyStoppingSmoothingWindowRate);
                 args.getValue("earlystopping", 2, _earlyStoppingMaxLookaheadRate); 
-				if (args.hasArgument("earlystoppingoutputinfo"))
-					args.getValue("earlystoppingoutputinfo", 0, _earlyStoppingOutputColumn);
-				else _earlyStoppingOutputColumn = "e01";
+                if (args.hasArgument("earlystoppingoutputinfo"))
+                    args.getValue("earlystoppingoutputinfo", 0, _earlyStoppingOutputColumn);
+                else _earlyStoppingOutputColumn = "e01";
             }
         }
-        
+
 
         // --constant: check constant learner in each iteration
         if ( args.hasArgument("constant") )
@@ -163,8 +163,11 @@ namespace MultiBoost {
         // Partition the original input_data file into multiple files
         // Call createInputData, initoptions, and load on these files and store
         // the result in a global array of inputData pointers.
-        // The global array should be malloced in this method
+        // The global array should be malloced in this method  
         partition_data = new PartitionsData(_nWorkers); 
+        BaseLearner* pWeakHypothesisSource = 
+            BaseLearner::RegisteredLearners().getLearner(_baseLearnerName);
+        pWeakHypothesisSource->initLearningOptions(args);
 
         for (int i = 0; i < _nWorkers; i++) {
             string result; 
@@ -175,7 +178,7 @@ namespace MultiBoost {
             partition_data->fileNames[i] = newName + result + ".arff";
             partition_data->outfiles[i].open(partition_data->fileNames[i].c_str());
         }
-       
+
         ifstream infile; 
         string data;
         infile.open(_trainFileName.c_str());
@@ -201,13 +204,13 @@ namespace MultiBoost {
 
         for (int k = 0; k < _nWorkers; k++) {
             string fileName = partition_data->fileNames[k];
-            partition_data->partitions[k] = new InputData();
+            partition_data->partitions[k] = pWeakHypothesisSource->createInputData();
             partition_data->partitions[k]->initOptions(args);
             partition_data->partitions[k]->load(fileName, IT_TRAIN, _verbose);
         }
     }
     // -----------------------------------------------------------------------------------
-   
+
     // -----------------------------------------------------------------------------------
     void AdaBoostPLLearner::deletePartitions() {
     }
@@ -217,7 +220,7 @@ namespace MultiBoost {
 
     void* startWorker(void* arg)  
     {
-	ThreadInfo *info = (ThreadInfo *) arg;
+        ThreadInfo *info = (ThreadInfo *) arg;
         int tid = info->tid;
         printf("[startWorker] tid = %d\n", tid);
         int numIterations = info->numIterations;
@@ -225,11 +228,10 @@ namespace MultiBoost {
         InputData* pTrainingData = partition_data->partitions[tid];
         //GenericStrongLearner*  pModel = info->base;
         AdaBoostMHLearner *MHLearner = new AdaBoostMHLearner();
-        printf("[startWorker] about to run MHLearner\n");
+        //printf("[startWorker] about to run MHLearner\n");
         MHLearner->run(info->args, pTrainingData, "SingleStumpLearner",
-                      numIterations, weakOutputs[tid]->weakHypotheses);
-                
-        printf("[startWorker] done with MHLearner\n");
+                numIterations, weakOutputs[tid]->weakHypotheses);
+        //printf("[startWorker] done with MHLearner\n");
         pthread_barrier_wait(&workerBarrier);
         pthread_exit(NULL);	
     }
@@ -238,7 +240,7 @@ namespace MultiBoost {
     {
         // load the arguments
         this->getArgs(args);
-    
+
         weakOutputs = new WeakOutput*[_nWorkers];
 
         for (int i = 0; i < _nWorkers; i++) {
@@ -253,87 +255,87 @@ namespace MultiBoost {
         pWeakHypothesisSource->initLearningOptions(args);
 
         /*BaseLearner* pConstantWeakHypothesisSource = 
-            BaseLearner::RegisteredLearners().getLearner("ConstantLearner"); */
+          BaseLearner::RegisteredLearners().getLearner("ConstantLearner"); */
         createPartitions(args);
 
-	    pthread_t threads[_nWorkers];
+        pthread_t threads[_nWorkers];
         int tid;
 
-	    if (pthread_barrier_init(&workerBarrier, NULL, _nWorkers + 1) != 0) {
+        if (pthread_barrier_init(&workerBarrier, NULL, _nWorkers + 1) != 0) {
             printf("\nbarrier init failed\n");
             return;
         }
 
-    	for (tid = 0; tid < _nWorkers; tid++)
-	    {		
+        for (tid = 0; tid < _nWorkers; tid++)
+        {		
             ThreadInfo *threadInfo = new ThreadInfo(tid, args, _numIterations);
-		    pthread_create(&threads[tid], NULL, startWorker, (void*) threadInfo);
-	    }	
-	    pthread_barrier_wait(&workerBarrier);
+            pthread_create(&threads[tid], NULL, startWorker, (void*) threadInfo);
+        }	
+        pthread_barrier_wait(&workerBarrier);
 
         // get the training input data, and load it - THIS SHOULD BE DONE ON THREADS
         /*InputData* pTrainingData = pWeakHypothesisSource->createInputData();
-        pTrainingData->initOptions(args);
-        pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
+          pTrainingData->initOptions(args);
+          pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
         //pTrainingData->load(partition_data->fileNames[0], IT_TRAIN, _verbose);
 
         // get the testing input data, and load it
         InputData* pTestData = NULL;
         if ( !_testFileName.empty() )
         {
-            pTestData = pWeakHypothesisSource->createInputData();
-            pTestData->initOptions(args);
-            pTestData->load(_testFileName, IT_TEST, _verbose);
+        pTestData = pWeakHypothesisSource->createInputData();
+        pTestData->initOptions(args);
+        pTestData->load(_testFileName, IT_TEST, _verbose);
         }
 
         // The output information object
         OutputInfo* pOutInfo = NULL;
         if ( !_outputInfoFile.empty() ) 
         {
-            pOutInfo = new OutputInfo(args);
-			if (_earlyStopping && pOutInfo->getOutputInfoObject(_earlyStoppingOutputColumn) == NULL)
-			{
-				if (_verbose >= 2)
-				{
-					cout << _earlyStoppingOutputColumn << " not declared as outputinfo but used for earlystopping, automatically added." << endl;
-				}
-				pOutInfo->setOutputList(_earlyStoppingOutputColumn);
-			}
-			pOutInfo->initialize(pTrainingData);
-
-			if (pTestData)
-				pOutInfo->initialize(pTestData);
-
-			pOutInfo->outputHeader(pTrainingData->getClassMap());
-
-
-            if ( ! args.hasArgument("resume") )
-            {
-                // Baseline: constant classifier - goes into 0th iteration
-
-                BaseLearner* pConstantWeakHypothesis = pConstantWeakHypothesisSource->create() ;
-                pConstantWeakHypothesis->initLearningOptions(args);
-                pConstantWeakHypothesis->setTrainingData(pTrainingData);
-                pConstantWeakHypothesis->run();
-
-                pOutInfo->outputIteration(-1);
-                pOutInfo->outputCustom(pTrainingData, pConstantWeakHypothesis);
-                if (pTestData != NULL)
-                {
-                    pOutInfo->separator();
-                    pOutInfo->outputCustom(pTestData, pConstantWeakHypothesis);
-                }
-                pOutInfo->outputCurrentTime();
-                pOutInfo->endLine();
-                
-                pOutInfo->initialize(pTrainingData);
-                if (pTestData)
-                    pOutInfo->initialize(pTestData);
-            }
+        pOutInfo = new OutputInfo(args);
+        if (_earlyStopping && pOutInfo->getOutputInfoObject(_earlyStoppingOutputColumn) == NULL)
+        {
+        if (_verbose >= 2)
+        {
+        cout << _earlyStoppingOutputColumn << " not declared as outputinfo but used for earlystopping, automatically added." << endl;
         }
-        
+        pOutInfo->setOutputList(_earlyStoppingOutputColumn);
+        }
+        pOutInfo->initialize(pTrainingData);
+
+        if (pTestData)
+        pOutInfo->initialize(pTestData);
+
+        pOutInfo->outputHeader(pTrainingData->getClassMap());
+
+
+        if ( ! args.hasArgument("resume") )
+        {
+        // Baseline: constant classifier - goes into 0th iteration
+
+        BaseLearner* pConstantWeakHypothesis = pConstantWeakHypothesisSource->create() ;
+        pConstantWeakHypothesis->initLearningOptions(args);
+        pConstantWeakHypothesis->setTrainingData(pTrainingData);
+        pConstantWeakHypothesis->run();
+
+        pOutInfo->outputIteration(-1);
+        pOutInfo->outputCustom(pTrainingData, pConstantWeakHypothesis);
+        if (pTestData != NULL)
+        {
+        pOutInfo->separator();
+        pOutInfo->outputCustom(pTestData, pConstantWeakHypothesis);
+        }
+        pOutInfo->outputCurrentTime();
+        pOutInfo->endLine();
+
+        pOutInfo->initialize(pTrainingData);
+        if (pTestData)
+        pOutInfo->initialize(pTestData);
+        }
+        }
+
         //cout << "Before 
-tion" << endl;
+        tion" << endl;
         // reload the previously found weak learners if -resume is set. 
         // otherwise just return 0
         int startingIteration = resumeWeakLearners(pTrainingData);
@@ -342,25 +344,25 @@ tion" << endl;
         Serialization ss(_shypFileName, _isShypCompressed );
         ss.writeHeader(_baseLearnerName); // this must go after resumeProcess has been called
 
-		// Initialization for earlystopping
-		sumErrorWindow = 0.0;
-		numErrorWindow = 0;
-		currentMin = 1.0;
-		_currentMinT = 0;
+        // Initialization for earlystopping
+        sumErrorWindow = 0.0;
+        numErrorWindow = 0;
+        currentMin = 1.0;
+        _currentMinT = 0;
 
-		OUTPUTINFO_OPTIMIZATION opt_type;
-		if (_earlyStopping)
-		{
-			opt_type = pOutInfo->getOutputInfoObject(_earlyStoppingOutputColumn)->getOptimType();
-			if (opt_type == UNKNOWN)
-			{
-				cerr << "ERROR!"
-					<< _earlyStoppingOutputColumn
-					<< " cannot be selected for earlyStopping policy " << endl;
-				exit(1);
+        OUTPUTINFO_OPTIMIZATION opt_type;
+        if (_earlyStopping)
+        {
+            opt_type = pOutInfo->getOutputInfoObject(_earlyStoppingOutputColumn)->getOptimType();
+            if (opt_type == UNKNOWN)
+            {
+                cerr << "ERROR!"
+                    << _earlyStoppingOutputColumn
+                    << " cannot be selected for earlyStopping policy " << endl;
+                exit(1);
 
-			}
-		}
+            }
+        }
 
         // perform the resuming if necessary. If not it will just return
         resumeProcess(ss, pTrainingData, pTestData, pOutInfo);
@@ -375,11 +377,11 @@ tion" << endl;
         ///////////////////////////////////////////////////////////////////////
         // Starting the AdaBoost main loop
         ///////////////////////////////////////////////////////////////////////
-//        _currentMinT = startingIteration; // early stopping
+        //        _currentMinT = startingIteration; // early stopping
         //TODO: Start timer here
 
-		if (_earlyStoppingDone)
-			startingIteration = _numIterations;
+        if (_earlyStoppingDone)
+            startingIteration = _numIterations;
         for (int t = startingIteration; t < _numIterations; ++t)
         {
             if (_verbose > 1)
@@ -390,9 +392,9 @@ tion" << endl;
             //pTrainingData->clearIndexSet();
 
             pWeakHypothesis->setTrainingData(pTrainingData);
-                        
+
             AlphaReal energy = pWeakHypothesis->run();
-                        
+
             //float gamma = pWeakHypothesis->getEdge();
             //cout << gamma << endl;
 
@@ -411,8 +413,8 @@ tion" << endl;
 
             if (_verbose > 1)
                 cout << "Weak learner: " << pWeakHypothesis->getName()<< endl;
-            
-            
+
+
             // Output the step-by-step information
             if (pOutInfo)
                 printOutputInfo(pOutInfo, t, pTrainingData, pTestData, pWeakHypothesis);
@@ -423,9 +425,9 @@ tion" << endl;
             if (_verbose > 1)
             {
                 cout << setprecision(5)
-                     << "--> Alpha = " << pWeakHypothesis->getAlpha() << endl
-                     << "--> Edge  = " << gamma << endl
-                     << "--> Energy  = " << energy << endl
+                    << "--> Alpha = " << pWeakHypothesis->getAlpha() << endl
+                    << "--> Edge  = " << gamma << endl
+                    << "--> Energy  = " << energy << endl
                     //            << "--> ConstantEnergy  = " << constantEnergy << endl
                     //            << "--> difference  = " << (energy - constantEnergy) << endl
                     ;
@@ -439,7 +441,7 @@ tion" << endl;
                 if (_verbose > 0)
                 {
                     cout << "Can't train any further: edge = " << gamma 
-                         << " (with and edge offset (theta)=" << _theta << ")" << endl;
+                        << " (with and edge offset (theta)=" << _theta << ")" << endl;
                 }
 
                 //          delete pWeakHypothesis;
@@ -454,7 +456,7 @@ tion" << endl;
             _foundHypotheses.push_back(pWeakHypothesis); 
             if (_earlyStopping && !_earlyStoppingDone)
             {
-				sumErrorWindow += pOutInfo->getOutputHistory(pTestData, _earlyStoppingOutputColumn, t);
+                sumErrorWindow += pOutInfo->getOutputHistory(pTestData, _earlyStoppingOutputColumn, t);
                 numErrorWindow += 1;
                 while (numErrorWindow > _earlyStoppingSmoothingWindowRate * t + 1) 
                 {
@@ -463,22 +465,22 @@ tion" << endl;
                 }
                 if (t > _earlyStoppingMinIterations) 
                 {
-					if (((opt_type == MIN) && ((sumErrorWindow / numErrorWindow) < currentMin)) ||
-						((opt_type == MAX) && ((sumErrorWindow / numErrorWindow) > currentMin)))
-					{
+                    if (((opt_type == MIN) && ((sumErrorWindow / numErrorWindow) < currentMin)) ||
+                            ((opt_type == MAX) && ((sumErrorWindow / numErrorWindow) > currentMin)))
+                    {
                         currentMin = sumErrorWindow / numErrorWindow;
                         _currentMinT = t;
                     }
                     cout << _earlyStoppingMinIterations << " " << t << ": " << sumErrorWindow/numErrorWindow << " " << _currentMinT << endl;
                     if (t > _currentMinT * _earlyStoppingMaxLookaheadRate)
                     {
-						cout << "Early Stopping at " << t << endl;
-						_earlyStoppingDone = true;
+                        cout << "Early Stopping at " << t << endl;
+                        _earlyStoppingDone = true;
                         break;
                     }
                 }
             }
-            
+
             // check if the time limit has been reached
             if (_maxTime > 0)
             {
@@ -490,7 +492,7 @@ tion" << endl;
                 {
                     if (_verbose > 0)
                         cout << "Time limit of " << _maxTime 
-                             << " minutes has been reached!" << endl;
+                            << " minutes has been reached!" << endl;
                     break;     
                 }
             } // check for maxtime
@@ -578,10 +580,10 @@ tion" << endl;
         string outFileName = args.getValue<string>("posteriors", 2);
         int numIterations = args.getValue<int>("posteriors", 3);
         int period = 0;
-                
+
         if ( numofargs == 5 )
             period = args.getValue<int>("posteriors", 4);
-                
+
         classifier.savePosteriors(testFileName, shypFileName, outFileName, numIterations, period);
     }
 
@@ -605,7 +607,7 @@ tion" << endl;
             }
         }
 
-                
+
         if (_verbose > 0)
             cout << ": 0%." << flush;
 
@@ -642,7 +644,7 @@ tion" << endl;
                 }
             }
         }
-        
+
 
         // centering the log weights for avoiding numerical problems
         AlphaReal meanLogWeights = 0; // the mean of the log weights
@@ -669,7 +671,7 @@ tion" << endl;
                 Z += exp(lIt->weight);
             }
         }
-        
+
         // normalizing and exponentiating the weights
         for (int i = 0; i < numExamples; ++i)
         {
@@ -679,7 +681,7 @@ tion" << endl;
                 lIt->weight = exp(lIt->weight)/Z;
             }
         }
-                
+
         //upload the margins 
         pOutInfo->setTable( pData, _hy );
         pOutInfo->setStartingIteration(numIters);
@@ -688,7 +690,7 @@ tion" << endl;
 
     // -------------------------------------------------------------------------
     // -------------------------------------------------------------------------
-                
+
     AlphaReal AdaBoostPLLearner::updateWeights(InputData* pData, BaseLearner* pWeakHypothesis)
     {
         const int numExamples = pData->getNumExamples();
@@ -718,8 +720,8 @@ tion" << endl;
                     lIt->y;
                 Z += lIt->weight * // w
                     exp( 
-                        -alpha * _hy[i][lIt->idx] // -alpha * h_l(x_i) * y_i
-                        );
+                            -alpha * _hy[i][lIt->idx] // -alpha * h_l(x_i) * y_i
+                       );
                 // important!
                 // _hy[i] must be a vector with different sizes, depending on the
                 // example!
@@ -788,7 +790,7 @@ tion" << endl;
 
         return gamma;
     }
-        
+
     // -------------------------------------------------------------------------
 
     int AdaBoostPLLearner::resumeWeakLearners(InputData* pTrainingData)
@@ -815,12 +817,12 @@ tion" << endl;
     // -------------------------------------------------------------------------
 
     void AdaBoostPLLearner::resumeProcess(Serialization& ss, 
-                                          InputData* pTrainingData, InputData* pTestData, 
-                                          OutputInfo* pOutInfo)
+            InputData* pTrainingData, InputData* pTestData, 
+            OutputInfo* pOutInfo)
     {
 
-		_earlyStoppingDone = false;
-		if (_resumeShypFileName.empty())
+        _earlyStoppingDone = false;
+        if (_resumeShypFileName.empty())
             return;
 
         vector<BaseLearner*>::iterator it;
@@ -839,7 +841,7 @@ tion" << endl;
             // Updates the weights
             if (_verbose > 0)
                 cout << "Recalculating the weights of training data...";
-                        
+
             updateWeights(pOutInfo, pTrainingData, _foundHypotheses);
 
             if (_verbose > 0)
@@ -858,19 +860,19 @@ tion" << endl;
             const int numIters = static_cast<int>(_foundHypotheses.size());
             const int step = numIters < 5 ? 1 : numIters / 5;
 
-			OUTPUTINFO_OPTIMIZATION opt_type;
-			if (_earlyStopping)
-			{
-				opt_type = pOutInfo->getOutputInfoObject(_earlyStoppingOutputColumn)->getOptimType();
-				if (opt_type == UNKNOWN)
-				{
-					cerr << "ERROR!" 
-						<< _earlyStoppingOutputColumn 
-						<< " cannot be selected for earlyStopping policy " << endl;
-				          exit(1);
+            OUTPUTINFO_OPTIMIZATION opt_type;
+            if (_earlyStopping)
+            {
+                opt_type = pOutInfo->getOutputInfoObject(_earlyStoppingOutputColumn)->getOptimType();
+                if (opt_type == UNKNOWN)
+                {
+                    cerr << "ERROR!" 
+                        << _earlyStoppingOutputColumn 
+                        << " cannot be selected for earlyStopping policy " << endl;
+                    exit(1);
 
-				}
-			}
+                }
+            }
 
             if (_verbose > 0)
                 cout << "Resuming up to iteration " << _foundHypotheses.size() - 1 << ": 0%." << flush;
@@ -896,39 +898,39 @@ tion" << endl;
                 if (gamma <= _theta)
                 {
                     cerr << "ERROR!" <<  setprecision(4) << endl
-                         << "At iteration <" << t << ">, edge smaller than the edge offset (theta). Something must be wrong!" << endl
-                         << "[Edge: " << gamma << " < Offset: " << _theta << "]" << endl
-                         << "Is the data file the same one used during the original training?" << endl;
+                        << "At iteration <" << t << ">, edge smaller than the edge offset (theta). Something must be wrong!" << endl
+                        << "[Edge: " << gamma << " < Offset: " << _theta << "]" << endl
+                        << "Is the data file the same one used during the original training?" << endl;
                     //          exit(1);
                 }
 
-				// Updating earlystopping status for slow resume
-				if (_earlyStopping)
-				{
-					sumErrorWindow += pOutInfo->getOutputHistory(pTestData, _earlyStoppingOutputColumn, t);
-					numErrorWindow += 1;
-					while (numErrorWindow > _earlyStoppingSmoothingWindowRate * t + 1)
-					{
-						sumErrorWindow -= pOutInfo->getOutputHistory(pTestData, _earlyStoppingOutputColumn, t - numErrorWindow + 1);
-						numErrorWindow -= 1;
-					}
-					if (t > _earlyStoppingMinIterations)
-					{
-						if (((opt_type == MIN) && ((sumErrorWindow / numErrorWindow) < currentMin)) ||
-							((opt_type == MAX) && ((sumErrorWindow / numErrorWindow) > currentMin)))
-						{
-							currentMin = sumErrorWindow / numErrorWindow;
-							_currentMinT = t;
-						}
-//						cout << _earlyStoppingMinIterations << " " << t << ": " << sumErrorWindow / numErrorWindow << " " << _currentMinT << endl;
-						if (t > _currentMinT * _earlyStoppingMaxLookaheadRate)
-						{
-							cout << "Early Stopping at " << t << endl;
-							_earlyStoppingDone = true;
-							break;
-						}
-					}
-				}
+                // Updating earlystopping status for slow resume
+                if (_earlyStopping)
+                {
+                    sumErrorWindow += pOutInfo->getOutputHistory(pTestData, _earlyStoppingOutputColumn, t);
+                    numErrorWindow += 1;
+                    while (numErrorWindow > _earlyStoppingSmoothingWindowRate * t + 1)
+                    {
+                        sumErrorWindow -= pOutInfo->getOutputHistory(pTestData, _earlyStoppingOutputColumn, t - numErrorWindow + 1);
+                        numErrorWindow -= 1;
+                    }
+                    if (t > _earlyStoppingMinIterations)
+                    {
+                        if (((opt_type == MIN) && ((sumErrorWindow / numErrorWindow) < currentMin)) ||
+                                ((opt_type == MAX) && ((sumErrorWindow / numErrorWindow) > currentMin)))
+                        {
+                            currentMin = sumErrorWindow / numErrorWindow;
+                            _currentMinT = t;
+                        }
+                        //						cout << _earlyStoppingMinIterations << " " << t << ": " << sumErrorWindow / numErrorWindow << " " << _currentMinT << endl;
+                        if (t > _currentMinT * _earlyStoppingMaxLookaheadRate)
+                        {
+                            cout << "Early Stopping at " << t << endl;
+                            _earlyStoppingDone = true;
+                            break;
+                        }
+                    }
+                }
 
 
             }  // loop on iterations
@@ -942,8 +944,8 @@ tion" << endl;
     // -------------------------------------------------------------------------
 
     void AdaBoostPLLearner::printOutputInfo(OutputInfo* pOutInfo, int t, 
-                                            InputData* pTrainingData, InputData* pTestData, 
-                                            BaseLearner* pWeakHypothesis)
+            InputData* pTrainingData, InputData* pTestData, 
+            BaseLearner* pWeakHypothesis)
     {
 
         pOutInfo->outputIteration(t);
@@ -954,9 +956,9 @@ tion" << endl;
 
             pOutInfo->separator();
             pOutInfo->outputCustom(pTestData, pWeakHypothesis);
-            
+
         }
-        
+
         pOutInfo->outputCurrentTime();
         pOutInfo->endLine();
     }
@@ -977,7 +979,7 @@ tion" << endl;
         if ( ! outStream.is_open() )
         {
             cerr << "ERROR: cannot open the output stream (<"
-                 << _weightFile << ">) for output the weights!" << endl;
+                << _weightFile << ">) for output the weights!" << endl;
             exit(1);
         }
 
@@ -1005,22 +1007,22 @@ tion" << endl;
     // -------------------------------------------------------------------------
     void AdaBoostPLLearner::run( const nor_utils::Args& args, InputData* pTrainingData, const string baseLearnerName, const int numIterations, vector<BaseLearner*>& foundHypotheses )
     {
-                
+
         // get the registered weak learner (type from name)
         BaseLearner* pWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner(baseLearnerName);
         // initialize learning options; normally it's done in the strong loop
         // also, here we do it for Product learners, so input data can be created
         pWeakHypothesisSource->initLearningOptions(args);
-                
+
         BaseLearner* pConstantWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner("ConstantLearner");
-                
-                                                        
+
+
         if (_verbose == 1)
             cout << "Learning in progress... " << flush;
-                
-                
+
+
         ///////////////////////////////////////////////////////////////////////
         // Starting the AdaBoost main loop
         ///////////////////////////////////////////////////////////////////////
@@ -1028,48 +1030,48 @@ tion" << endl;
         {
             if (_verbose > 0)
                 cout << (t+1) << ", " << flush;
-                        
+
             BaseLearner* pWeakHypothesis = pWeakHypothesisSource->create();
             pWeakHypothesis->initLearningOptions(args);
             //pTrainingData->clearIndexSet();
-                        
+
             pWeakHypothesis->setTrainingData(pTrainingData);
-                        
+
             AlphaReal energy = pWeakHypothesis->run();
-                        
+
             //float gamma = pWeakHypothesis->getEdge();
             //cout << gamma << endl;
-                        
+
             if ( (_withConstantLearner) || ( energy != energy ) ) // check constant learner if user wants it (if energi is nan, then we chose constant learner
             {
                 BaseLearner* pConstantWeakHypothesis = pConstantWeakHypothesisSource->create() ;
                 pConstantWeakHypothesis->initLearningOptions(args);
                 pConstantWeakHypothesis->setTrainingData(pTrainingData);
                 AlphaReal constantEnergy = pConstantWeakHypothesis->run();
-                                
+
                 if ( (constantEnergy <= energy) || ( energy != energy ) || ( nor_utils::is_zero(constantEnergy - energy))) {
                     delete pWeakHypothesis;
                     pWeakHypothesis = pConstantWeakHypothesis;
                 }
             }
-                        
+
             if (_verbose > 1)
                 cout << "Weak learner: " << pWeakHypothesis->getName()<< endl;
-                        
+
             // Updates the weights and returns the edge
             AlphaReal gamma = updateWeights(pTrainingData, pWeakHypothesis);
-                        
+
             if (_verbose > 1)
             {
                 cout << setprecision(5)
-                     << "--> Alpha = " << pWeakHypothesis->getAlpha() << endl
-                     << "--> Edge  = " << gamma << endl
-                     << "--> Energy  = " << energy << endl
+                    << "--> Alpha = " << pWeakHypothesis->getAlpha() << endl
+                    << "--> Edge  = " << gamma << endl
+                    << "--> Energy  = " << energy << endl
                     //            << "--> ConstantEnergy  = " << constantEnergy << endl
                     //            << "--> difference  = " << (energy - constantEnergy) << endl
                     ;
             }
-                        
+
             // If gamma <= theta the algorithm must stop.
             // If theta == 0 and gamma is 0, it means that the weak learner is no better than chance
             // and no further training is possible.
@@ -1078,19 +1080,19 @@ tion" << endl;
                 if (_verbose > 0)
                 {
                     cout << "Can't train any further: edge = " << gamma 
-                         << " (with and edge offset (theta)=" << _theta << ")" << endl;
+                        << " (with and edge offset (theta)=" << _theta << ")" << endl;
                 }
-                                
+
                 //          delete pWeakHypothesis;
                 //          break; 
             }
-                                                
+
             // Add it to the internal list of weak hypotheses
             foundHypotheses.push_back(pWeakHypothesis); 
-                        
+
         }  // loop on iterations
         /////////////////////////////////////////////////////////
-                
+
         if (_verbose > 0)
             cout << "AdaBoost Learning completed." << endl;
     }
