@@ -32,12 +32,12 @@
 
 
 /**
- * \file AdaBoostMHClassifier.h Performs the classification with AdaBoostMH.
+ * \file AdaBoostPLClassifier.h Performs the classification with AdaBoostPL.
  */
 #pragma warning( disable : 4786 )
 
-#ifndef __ADABOOST_MH_CLASSIFIER_H
-#define __ADABOOST_MH_CLASSIFIER_H
+#ifndef __ADABOOST_PL_CLASSIFIER_H
+#define __ADABOOST_PL_CLASSIFIER_H
 
 #include "Utils/Args.h"
 
@@ -57,7 +57,7 @@ namespace MultiBoost {
     class BaseLearner;
         
     /**
-     * Classify a dataset with AdaBoost.MH learner.
+     * Classify a dataset with AdaBoost.PL learner.
      * Using the strong hypothesis file (shyp.xml by default) it builds the
      * list of weak hypothesis (or weak learners), and use them to perform a classification over 
      * the given data set. The strong hypothesis is the linear combination of the weak 
@@ -73,7 +73,7 @@ namespace MultiBoost {
      * \f]
      * \date 15/11/2005
      */
-    class AdaBoostMHClassifier
+    class AdaBoostPLClassifier
     {
     public:
                 
@@ -86,7 +86,7 @@ namespace MultiBoost {
          * \see _verbose
          * \date 16/11/2005
          */
-        AdaBoostMHClassifier(const nor_utils::Args& args, int verbose = 1);
+        AdaBoostPLClassifier(const nor_utils::Args& args, int verbose = 1);
                 
         /**
          * Starts the classification process. 
@@ -285,10 +285,10 @@ namespace MultiBoost {
          * Fake assignment operator to avoid warning.
          * \date 6/12/2005
          */
-        AdaBoostMHClassifier& operator=( const AdaBoostMHClassifier& ) {return *this;}
+        AdaBoostPLClassifier& operator=( const AdaBoostPLClassifier& ) {return *this;}
                 
     };
         
 } // end of namespace MultiBoost
 
-#endif // __ADABOOST_MH_CLASSIFIER_H
+#endif // __ADABOOST_PL_CLASSIFIER_H
