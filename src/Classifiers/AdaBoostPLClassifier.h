@@ -127,6 +127,12 @@ namespace MultiBoost {
          * \date 10/2/2006
          */
         void printConfusionMatrix(const string& dataFileName, const string& shypFileName);
+
+        virtual void computeMergeResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
+                                    vector< ExampleResults* >& results, int numIterations );
+
+        virtual void merge(InputData *pData, vector<BaseLearner*>& column, int point, int label,
+                           int numWorkers);
                 
         /**
          * Output to a file a confusion matrix with every element separated by a tab.

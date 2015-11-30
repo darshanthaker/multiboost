@@ -50,6 +50,7 @@ namespace MultiBoost {
         
     AlphaReal SingleStumpLearner::run()
     {
+
         const int numClasses = _pTrainingData->getNumClasses();
         const int numColumns = _pTrainingData->getNumAttributes();
                 
@@ -91,6 +92,7 @@ namespace MultiBoost {
                            pair<vpReverseIterator,vpReverseIterator> > dataSR = 
                     static_cast<SortedData*>(_pTrainingData)->getFilteredandReverseBeginEnd(j);
                 
+                printf("random PRINTF\n");
                 const vpIterator dataBegin = dataSR.first.first;
                 const vpIterator dataEnd = dataSR.first.second;
                 const vpReverseIterator dataReverseBegin = dataSR.second.first;
