@@ -82,12 +82,10 @@ namespace MultiBoost {
 	    vector<BaseLearner*> weakHypotheses;
 	
 	    WeakOutput() {
-	        //hypotheses = new vector<BaseLearner*>();
-	        //alphas = new vector<AlphaReal>();
 	    }
 
 	    ~WeakOutput() {
-	        hypotheses.clear();
+	        weakHypotheses.clear();
 	    }
 	
     };
@@ -138,7 +136,6 @@ namespace MultiBoost {
 
         virtual void deletePartitions(); 
 	
-	virtual void runOrig(const nor_utils::Args& args);
         /**
          * For SoftCascade
          * \param args The arguments provided by the command line with all

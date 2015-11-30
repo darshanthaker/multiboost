@@ -40,6 +40,7 @@
 #define __ADABOOST_PL_CLASSIFIER_H
 
 #include "Utils/Args.h"
+#include "StrongLearners/AdaBoostPLLearner.h"
 
 #include <string>
 #include <cassert>
@@ -128,10 +129,10 @@ namespace MultiBoost {
          */
         void printConfusionMatrix(const string& dataFileName, const string& shypFileName);
 
-        virtual void computeMergeResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
-                                    vector< ExampleResults* >& results, int numIterations );
+        virtual void computeMergeResults(InputData* pData, vector<WeakOutput>& weakOutputs,
+                                    vector< ExampleResults* >& results, int numIterations, int numWorkers);
 
-        virtual void merge(InputData *pData, vector<BaseLearner*>& column, int point, int label,
+        virtual int merge(InputData *pData, vector<BaseLearner*>& column, int point, int label,
                            int numWorkers);
                 
         /**

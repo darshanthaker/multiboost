@@ -158,6 +158,7 @@ namespace MultiBoost {
     pair<pair<vpIterator,vpIterator>,
          pair<vpReverseIterator,vpReverseIterator> > SortedData::getFilteredandReverseBeginEnd(int colIdx)
     {
+        printf("IN SORTED DATA\n");
         pair<vpIterator,vpIterator> dataBeginEnd = getFilteredBeginEnd(colIdx);
         pair<vpReverseIterator,vpReverseIterator> dataReverseBeginEnd = 
             make_pair(_filteredColumn.rbegin(),_filteredColumn.rend());

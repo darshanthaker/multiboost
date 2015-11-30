@@ -217,7 +217,7 @@ namespace MultiBoost {
 
     void* startWorker(void* arg)  
     {
-	    ThreadInfo *info = (ThreadInfo *) arg;
+	ThreadInfo *info = (ThreadInfo *) arg;
         int tid = info->tid;
         printf("[startWorker] tid = %d\n", tid);
         int numIterations = info->numIterations;
@@ -226,8 +226,8 @@ namespace MultiBoost {
         //GenericStrongLearner*  pModel = info->base;
         AdaBoostMHLearner *MHLearner = new AdaBoostMHLearner();
         printf("[startWorker] about to run MHLearner\n");
-        MHLearner->run(info->args, pTrainingData, trainFileName,
-                      numIterations, weakOutputs[tid]->hypotheses);
+        MHLearner->run(info->args, pTrainingData, "SingleStumpLearner",
+                      numIterations, weakOutputs[tid]->weakHypotheses);
                 
         printf("[startWorker] done with MHLearner\n");
         pthread_barrier_wait(&workerBarrier);
@@ -332,7 +332,8 @@ namespace MultiBoost {
             }
         }
         
-        //cout << "Before serialization" << endl;
+        //cout << "Before 
+tion" << endl;
         // reload the previously found weak learners if -resume is set. 
         // otherwise just return 0
         int startingIteration = resumeWeakLearners(pTrainingData);

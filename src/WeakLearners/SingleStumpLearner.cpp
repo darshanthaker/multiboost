@@ -50,9 +50,10 @@ namespace MultiBoost {
         
     AlphaReal SingleStumpLearner::run()
     {
-
+	
         const int numClasses = _pTrainingData->getNumClasses();
         const int numColumns = _pTrainingData->getNumAttributes();
+	printf("numClasses = %d, numColumns = %d\n", numClasses, numColumns);
                 
         // set the smoothing value to avoid numerical problem
         // when theta=0.
@@ -69,6 +70,8 @@ namespace MultiBoost {
                 
         StumpAlgorithm<FeatureReal> sAlgo(numClasses);
         sAlgo.initSearchLoop(_pTrainingData);
+
+		printf ("Before random printf 1 \n");
                 
         AlphaReal halfTheta;
         if ( _abstention == ABST_REAL || _abstention == ABST_CLASSWISE )
@@ -88,6 +91,16 @@ namespace MultiBoost {
                 --numOfDimensions;
                 //if ( static_cast<SortedData*>(_pTrainingData)->isAttributeEmpty( j ) ) continue;
                 
+		
+		printf ("Before random printf \n");
+		printf ("_pTrainingData is Null = %d \n", _pTrainingData == NULL);
+		printf ("_pTrainingData is Null = %d \n", _pTrainingData == NULL);
+		printf ("static_cast is Null = %d\n", static_cast<SortedData*> (_pTrainingData) == NULL);
+		SortedData* sortedData = new SortedData();
+		const pair<pair<vpIterator,vpIterator>,
+                           pair<vpReverseIterator,vpReverseIterator> > throughput = 
+                    sortedData->getFilteredandReverseBeginEnd(j);
+		printf ("Google\n");
                 const pair<pair<vpIterator,vpIterator>,
                            pair<vpReverseIterator,vpReverseIterator> > dataSR = 
                     static_cast<SortedData*>(_pTrainingData)->getFilteredandReverseBeginEnd(j);

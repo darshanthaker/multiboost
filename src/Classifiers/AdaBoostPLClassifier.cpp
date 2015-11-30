@@ -35,6 +35,7 @@
 #include "IO/Serialization.h"
 #include "IO/OutputInfo.h"
 #include "Classifiers/AdaBoostPLClassifier.h"
+#include "StrongLearners/AdaBoostPLLearner.h"
 #include "Classifiers/ExampleResults.h"
 
 #include "WeakLearners/SingleStumpLearner.h" // for saveSingleStumpFeatureData
@@ -274,8 +275,7 @@ namespace MultiBoost {
     }
 
     //Takes in a array of weakHypotheses rather than just one vector of weak Hypotheses
-    void AdaBoostPLClassifier::computeMergeResults(InputData *pData, vector<BaseLearner*>& *weakHypotheses,
-                                            vector< ExampleResults* >& results, int numIterations)
+    void AdaBoostPLClassifier::computeMergeResults(InputData *pData, vector<WeakOutput>& weakOutputs, vector< ExampleResults* >& results, int numIterations, int numWorkers)
     {
         //assert( !weakHypotheses.empty() );
 
@@ -288,7 +288,6 @@ namespace MultiBoost {
         if ( !_outputInfoFile.empty() )
         {
             pOutInfo = new OutputInfo(_args);
-
         }
 
 
@@ -301,7 +300,6 @@ namespace MultiBoost {
 
         // iterator over all the weak hypotheses
         vector<BaseLearner*>::const_iterator whyIt;
-        int t;
 
         if ( pOutInfo )
         {
@@ -331,33 +329,18 @@ namespace MultiBoost {
                 for (int l = 0; l < numClasses; ++l)
                 {
                     vector<BaseLearner*> column;
+		    AlphaReal alpha  = 0;
                     for (int m = 0; m < numWorkers; ++m)
                     {
-                        BaseLearner* weakHyp = weakHypotheses[m];
-                        column.push_back(weakHyp[t]);
+			//change to use WeakOutputs
+                        WeakOutput weakHyp = weakOutputs[m];
+                        column.push_back(weakHyp.weakHypotheses[t]);
+			alpha += weakHyp.weakHypotheses[t]->getAlpha();
                     }
+		    alpha /= (AlphaReal) numWorkers;
                     currVotesVector[l] += alpha * merge(pData, column, i, l, numWorkers);
                     //currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
                 }
-            }
-
-            // if needed output the step-by-step information
-            if ( pOutInfo )
-            {
-                pOutInfo->outputIteration(t);
-//                              pOutInfo->outputError(pData, currWeakHyp);
-//                              pOutInfo->outTPRFPR(pData);
-                //pOutInfo->outputBalancedError(pData, currWeakHyp);
-//                              if ( ( t % 1 ) == 0 ) {
-//                                      pOutInfo->outputROC(pData);
-//                              }
-
-                pOutInfo->outputCustom(pData, currWeakHyp);
-                // Margins and edge requires an update of the weight,
-                // therefore I keep them out for the moment
-                //outInfo.outputMargins(pData, currWeakHyp);
-                //outInfo.outputEdge(pData, currWeakHyp);
-                pOutInfo->endLine();
             }
         }
 
@@ -367,20 +350,21 @@ namespace MultiBoost {
     }
 
     int AdaBoostPLClassifier::merge(InputData *pData, vector<BaseLearner*>& column, int point, int label, int numWorkers) {
-        int positive = 0;
-        int negative = 0;
+        int counter = 0;
         vector<BaseLearner*>::const_iterator whyIt;
 
         //for (whyIt = weakHypotheses.begin(), t = 0;
         //     whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
+	int m;
         for (whyIt = column.begin(), m = 0; whyIt != column.end() && m < numWorkers; ++whyIt, ++m) {
+	    BaseLearner* currWeakHypothesis = *whyIt;
             //currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
             //TODO: Find out where the classify method is defined...
-            if (currWeakHypothesis->classify(pData, point, label) > 0) positive++;
-            else negative++;
+            if (currWeakHypothesis->classify(pData, point, label) > 0) counter++;
+            else counter--;
         }
-        if (positive > negative) return 1;
-        if (positive == negative) return 0;
+        if (counter > 0) return 1;
+        if (counter == 0) return 0;
         return -1;
     }
 
@@ -400,7 +384,10 @@ namespace MultiBoost {
 
         // Where to put the weak hypotheses
         vector<BaseLearner*> weakHypotheses;
+	
+	vector<WeakOutput> weakOutputs;
 
+	//should we load M shyp files?
         // loads them
         us.loadHypotheses(shypFileName, weakHypotheses, pData);
 
@@ -411,7 +398,8 @@ namespace MultiBoost {
             cout << "Classifying..." << flush;
 
 
-        //computeMerge( pData, weakOutput, results, (int) weakHypotheses.size() );
+	//pdata, weakoutputs, results, numiterations, numworkers
+        //computeMerge( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size(),);
         // get the results
         computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
 
