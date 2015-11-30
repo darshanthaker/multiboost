@@ -140,6 +140,7 @@
 
 #include "Defaults.h"
 #include "Utils/Args.h"
+#include "Timer.h"
 
 #include "StrongLearners/GenericStrongLearner.h"
 #include "WeakLearners/BaseLearner.h" // To get the list of the registered weak learners
@@ -364,7 +365,7 @@ int main(int argc, const char* argv[])
                          "AdaBoost (default)\n"
                          "FilterBoost\n"
                          "SoftCascade\n"
-                         "ArcGV\n"
+                         "ArcGVdone\n"
                          "VJcascade\n", 1, "<stronglearner>" );
         
     args.declareArgument("slowresumeprocess", "Computes every statitstic in each iteration (slow resume)\n"
@@ -534,8 +535,11 @@ int main(int argc, const char* argv[])
         // This hould be changed: the user decides the strong learner
         BaseLearner*  pWeakHypothesisSource = BaseLearner::RegisteredLearners().getLearner(baseLearnerName);
         pModel = pWeakHypothesisSource->createGenericStrongLearner( args );
-                
+        ggc::Timer t("histogram");
+	t.start();
         pModel->run(args);
+	t.stop();   
+	printf("Throughput is : %llu \n",t.duration());
     }
     //////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////
