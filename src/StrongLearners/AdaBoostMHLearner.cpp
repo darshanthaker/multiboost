@@ -930,7 +930,8 @@ namespace MultiBoost {
                 
         resumeWeakLearners(pTrainingData);
         Serialization ss(_shypFileName, _isShypCompressed );
-        ss.writeHeader(_baseLearnerName); // this must go after resumeProcess has been called
+        ss.writeHeader(baseLearnerName); // this must go after resumeProcess has been called
+        //printf("BASE LEARNER NAME IS %s\n", baseLearnerName.c_str());
                                                         
         if (_verbose == 1)
             cout << "Learning in progress... " << flush;

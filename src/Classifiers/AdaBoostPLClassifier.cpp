@@ -384,32 +384,34 @@ namespace MultiBoost {
         if (_verbose > 0)
             cout << "Loading strong hypothesis..." << flush;
 
-	vector<WeakOutput> weakOutputs;
+        vector<WeakOutput> weakOutputs;
 
-	for (int m = 0; m < _nWorkers; m++)
-	{
-		// The class that loads the weak hypotheses
-		UnSerialization us;
+        for (int m = 0; m < _nWorkers; m++)
+        {
+            // The class that loads the weak hypotheses
+            UnSerialization us;
 
-		// Where to put the weak hypotheses
-		vector<BaseLearner*> weakHypotheses;
+            // Where to put the weak hypotheses
+            vector<BaseLearner*> weakHypotheses;
 
-		WeakOutput weakOutput;
+            WeakOutput weakOutput;
 
-		string result; 
-		ostringstream convert;   // stream used for the conversion
-		convert << m;
-		result = convert.str();
-		string newName = shypFileName.substr(0, shypFileName.find(".xml"));
-		string newShypfileName = newName + result + ".xml";
-		
-		// loads them
-		us.loadHypotheses(newShypfileName, weakHypotheses, pData);
+            string result; 
+            ostringstream convert;   // stream used for the conversion
+            convert << m;
+            result = convert.str();
+            string newName = shypFileName.substr(0, shypFileName.find(".xml") - 1);
+            string newShypfileName = newName + result + ".xml";
 
-		weakOutput.weakHypotheses = weakHypotheses;		
-	
-		weakOutputs.push_back(weakOutput);
-	}
+            printf("shypFilename = %s\n", newShypfileName.c_str());
+
+            // loads them
+            us.loadHypotheses(newShypfileName, weakHypotheses, pData);
+
+            weakOutput.weakHypotheses = weakHypotheses;		
+
+            weakOutputs.push_back(weakOutput);
+        }
 
         // where the results go
         vector< ExampleResults* > results;
@@ -475,14 +477,14 @@ namespace MultiBoost {
 
         if (_verbose > 0)
             cout << "Loading strong hypothesis..." << flush;
-	
-	// The class that loads the weak hypotheses
+
+        // The class that loads the weak hypotheses
         UnSerialization us;
 
-	// Where to put the weak hypotheses
+        // Where to put the weak hypotheses
         vector<BaseLearner*> weakHypotheses;
-		
-	// loads them
+
+        // loads them
         us.loadHypotheses(shypFileName, weakHypotheses, pData);
 
         // where the results go
