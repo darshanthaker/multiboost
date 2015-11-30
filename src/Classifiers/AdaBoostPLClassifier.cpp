@@ -419,9 +419,9 @@ namespace MultiBoost {
 
 
         //pdata, weakoutputs, results, numiterations, numworkers
-        //computeMergeResults( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size());
+        computeMergeResults( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size());
         // get the results
-        computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
+        //computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
 
         const int numClasses = pData->getNumClasses();
         const int numExamples = pData->getNumExamples();
