@@ -276,6 +276,7 @@ namespace MultiBoost {
          * - 2 = show all messages
          */
         int      _verbose;
+        int _nWorkers;
                 
         const nor_utils::Args&  _args;  //!< The arguments defined by the user.
         string   _outputInfoFile; //!< The filename of the step-by-step information file that will be updated 

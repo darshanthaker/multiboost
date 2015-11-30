@@ -57,13 +57,15 @@ namespace MultiBoost {
             args.getValue("outputinfo", 0, _outputInfoFile);
         else
             _outputInfoFile = OUTPUT_NAME;
+        if (args.hasArgument("nworkers"))
+            args.getValue("nworkers", 0, _nWorkers);
 
     }
 
     // -------------------------------------------------------------------------
 
     void AdaBoostPLClassifier::run(const string& dataFileName, const string& shypFileName,
-                                   int numIterations, const string& outResFileName, int numRanksEnclosed)
+            int numIterations, const string& outResFileName, int numRanksEnclosed)
     {
         InputData* pData = loadInputData(dataFileName, shypFileName);
 
@@ -110,7 +112,7 @@ namespace MultiBoost {
             {
                 // first rank (winner): rankedError[0]
                 cout << "Class '" << pData->getClassMap().getNameFromIdx(l) << "': "
-                     << setprecision(4) << (1 - rankedError[0][l]) * 100 << "%";
+                    << setprecision(4) << (1 - rankedError[0][l]) * 100 << "%";
 
                 // output the others on its side
                 if (numRanksEnclosed > 1 && _verbose > 1)
@@ -126,7 +128,7 @@ namespace MultiBoost {
 
             // the overall error
             cout << "\n--> Multi-Class Error Rate: "
-                 << setprecision(4) << getOverallError(pData, results, 0) * 100 << "%";
+                << setprecision(4) << getOverallError(pData, results, 0) * 100 << "%";
 
             // output the others on its side
             if (numRanksEnclosed > 1 && _verbose > 1)
@@ -305,10 +307,10 @@ namespace MultiBoost {
         {
             pOutInfo->initialize( pData );
             pOutInfo->outputHeader(pData->getClassMap(),
-                                   true, // output iterations
-                                   false, // output time
-                                   true // endline
-                );
+                    true, // output iterations
+                    false, // output time
+                    true // endline
+                    );
         }
 
         // for every feature: 1..T
@@ -329,15 +331,15 @@ namespace MultiBoost {
                 for (int l = 0; l < numClasses; ++l)
                 {
                     vector<BaseLearner*> column;
-		    AlphaReal alpha  = 0;
+                    AlphaReal alpha  = 0;
                     for (int m = 0; m < numWorkers; ++m)
                     {
-			//change to use WeakOutputs
+                        //change to use WeakOutputs
                         WeakOutput weakHyp = weakOutputs[m];
                         column.push_back(weakHyp.weakHypotheses[t]);
-			alpha += weakHyp.weakHypotheses[t]->getAlpha();
+                        alpha += weakHyp.weakHypotheses[t]->getAlpha();
                     }
-		    alpha /= (AlphaReal) numWorkers;
+                    alpha /= (AlphaReal) numWorkers;
                     currVotesVector[l] += alpha * merge(pData, column, i, l, numWorkers);
                     //currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
                 }
@@ -355,9 +357,9 @@ namespace MultiBoost {
 
         //for (whyIt = weakHypotheses.begin(), t = 0;
         //     whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
-	int m;
+        int m;
         for (whyIt = column.begin(), m = 0; whyIt != column.end() && m < numWorkers; ++whyIt, ++m) {
-	    BaseLearner* currWeakHypothesis = *whyIt;
+            BaseLearner* currWeakHypothesis = *whyIt;
             //currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
             //TODO: Find out where the classify method is defined...
             if (currWeakHypothesis->classify(pData, point, label) > 0) counter++;
@@ -372,8 +374,10 @@ namespace MultiBoost {
     // -------------------------------------------------------------------------
 
     void AdaBoostPLClassifier::saveConfusionMatrix(const string& dataFileName, const string& shypFileName,
-                                                   const string& outFileName)
+            const string& outFileName)
     {
+        printf("---------------------------------------------------------\n");
+        printf("BOOM BITCH I GOT IT RIGHT\n");
         InputData* pData = loadInputData(dataFileName, shypFileName);
 
         if (_verbose > 0)
@@ -384,10 +388,10 @@ namespace MultiBoost {
 
         // Where to put the weak hypotheses
         vector<BaseLearner*> weakHypotheses;
-	
-	vector<WeakOutput> weakOutputs;
 
-	//should we load M shyp files?
+        vector<WeakOutput> weakOutputs;
+
+        //should we load M shyp files?
         // loads them
         us.loadHypotheses(shypFileName, weakHypotheses, pData);
 
@@ -398,10 +402,10 @@ namespace MultiBoost {
             cout << "Classifying..." << flush;
 
 
-	//pdata, weakoutputs, results, numiterations, numworkers
-        //computeMerge( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size(),);
+        //pdata, weakoutputs, results, numiterations, numworkers
+        computeMergeResults( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size());
         // get the results
-        computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
+        //computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
 
         const int numClasses = pData->getNumClasses();
         const int numExamples = pData->getNumExamples();
@@ -449,7 +453,7 @@ namespace MultiBoost {
     // -------------------------------------------------------------------------
 
     void AdaBoostPLClassifier::savePosteriors(const string& dataFileName, const string& shypFileName,
-                                              const string& outFileName, int numIterations, int period)
+            const string& outFileName, int numIterations, int period)
     {
         InputData* pData = loadInputData(dataFileName, shypFileName);
 
@@ -555,7 +559,7 @@ namespace MultiBoost {
 
 
     void AdaBoostPLClassifier::saveCalibratedPosteriors(const string& dataFileName, const string& shypFileName,
-                                                        const string& outFileName, int numIterations)
+            const string& outFileName, int numIterations)
     {
         InputData* pData = loadInputData(dataFileName, shypFileName);
 
@@ -628,7 +632,7 @@ namespace MultiBoost {
     // -------------------------------------------------------------------------
 
     void AdaBoostPLClassifier::saveLikelihoods(const string& dataFileName, const string& shypFileName,
-                                               const string& outFileName, int numIterations)
+            const string& outFileName, int numIterations)
     {
         InputData* pData = loadInputData(dataFileName, shypFileName);
 
@@ -690,7 +694,7 @@ namespace MultiBoost {
 
         // for every feature: 1..T
         for (whyIt = weakHypotheses.begin(), t = 0;
-             whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
+                whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
         {
             BaseLearner* currWeakHyp = *whyIt;
             AlphaReal alpha = currWeakHyp->getAlpha();
@@ -780,20 +784,20 @@ namespace MultiBoost {
 
 
         /*
-          for (int i = 0; i < numExamples; ++i)
-          {
-          // output the name if it exists, otherwise the number
-          // of the example
-          exampleName = pData->getExampleName(i);
-          if ( !exampleName.empty() )
-          outFile << exampleName << ',';
+           for (int i = 0; i < numExamples; ++i)
+           {
+        // output the name if it exists, otherwise the number
+        // of the example
+        exampleName = pData->getExampleName(i);
+        if ( !exampleName.empty() )
+        outFile << exampleName << ',';
 
-          // output the posteriors
-          outFile << results[i]->getVotesVector()[0];
-          for (int l = 1; l < numClasses; ++l)
-          outFile << ',' << results[i]->getVotesVector()[l];
-          outFile << '\n';
-          }
+        // output the posteriors
+        outFile << results[i]->getVotesVector()[0];
+        for (int l = 1; l < numClasses; ++l)
+        outFile << ',' << results[i]->getVotesVector()[l];
+        outFile << '\n';
+        }
         */
 
         if (_verbose > 0)
@@ -867,7 +871,7 @@ namespace MultiBoost {
 
     // Returns the results into ptRes
     void AdaBoostPLClassifier::computeResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
-                                              vector< ExampleResults* >& results, int numIterations)
+            vector< ExampleResults* >& results, int numIterations)
     {
         assert( !weakHypotheses.empty() );
 
@@ -899,15 +903,15 @@ namespace MultiBoost {
         {
             pOutInfo->initialize( pData );
             pOutInfo->outputHeader(pData->getClassMap(),
-                                   true, // output iterations
-                                   false, // output time
-                                   true // endline
-                );
+                    true, // output iterations
+                    false, // output time
+                    true // endline
+                    );
         }
 
         // for every feature: 1..T
         for (whyIt = weakHypotheses.begin(), t = 0;
-             whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
+                whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
         {
             BaseLearner* currWeakHyp = *whyIt;
             AlphaReal alpha = currWeakHyp->getAlpha();
@@ -927,12 +931,12 @@ namespace MultiBoost {
             if ( pOutInfo )
             {
                 pOutInfo->outputIteration(t);
-//                              pOutInfo->outputError(pData, currWeakHyp);
-//                              pOutInfo->outTPRFPR(pData);
+                //                              pOutInfo->outputError(pData, currWeakHyp);
+                //                              pOutInfo->outTPRFPR(pData);
                 //pOutInfo->outputBalancedError(pData, currWeakHyp);
-//                              if ( ( t % 1 ) == 0 ) {
-//                                      pOutInfo->outputROC(pData);
-//                              }
+                //                              if ( ( t % 1 ) == 0 ) {
+                //                                      pOutInfo->outputROC(pData);
+                //                              }
 
                 pOutInfo->outputCustom(pData, currWeakHyp);
                 // Margins and edge requires an update of the weight,
@@ -953,7 +957,7 @@ namespace MultiBoost {
     // Continue returns the results into ptRes for savePosteriors
     // must be called the computeResult first!!!
     void AdaBoostPLClassifier::continueComputingResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
-                                                        vector< ExampleResults* >& results, int fromIteration, int toIteration)
+            vector< ExampleResults* >& results, int fromIteration, int toIteration)
     {
         assert( !weakHypotheses.empty() );
 
@@ -966,7 +970,7 @@ namespace MultiBoost {
         int t;
 
         for (whyIt = weakHypotheses.begin(), t = 0;
-             whyIt != weakHypotheses.end() && t < fromIteration; ++whyIt, ++t) {}
+                whyIt != weakHypotheses.end() && t < fromIteration; ++whyIt, ++t) {}
 
         // for every feature: 1..T
         for (;whyIt != weakHypotheses.end() && t < toIteration; ++whyIt, ++t)
@@ -991,7 +995,7 @@ namespace MultiBoost {
     // -------------------------------------------------------------------------
 
     float AdaBoostPLClassifier::getOverallError( InputData* pData, const vector<ExampleResults*>& results,
-                                                 int atLeastRank )
+            int atLeastRank )
     {
         const int numExamples = pData->getNumExamples();
         int numErrors = 0;
@@ -1013,7 +1017,7 @@ namespace MultiBoost {
     // -------------------------------------------------------------------------
 
     void AdaBoostPLClassifier::getClassError( InputData* pData, const vector<ExampleResults*>& results,
-                                              vector<float>& classError, int atLeastRank )
+            vector<float>& classError, int atLeastRank )
     {
         const int numExamples = pData->getNumExamples();
         const int numClasses = pData->getNumClasses();
