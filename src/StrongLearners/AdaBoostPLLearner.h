@@ -95,8 +95,9 @@ namespace MultiBoost {
         int tid;
         const nor_utils::Args& args;
         int numIterations;
+        string shypFileName;
         
-        ThreadInfo(int tid, const nor_utils::Args& args, int numIterations) : tid(tid), args(args), numIterations(numIterations) {};
+        ThreadInfo(int tid, const nor_utils::Args& args, int numIterations, string shypFileName) : tid(tid), args(args), numIterations(numIterations), shypFileName(shypFileName) {};
     };
 
     /**

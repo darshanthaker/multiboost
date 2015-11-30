@@ -72,7 +72,7 @@ namespace MultiBoost {
          */
     AdaBoostMHLearner()
         : _numIterations(0), _maxTime(-1), _theta(0), _verbose(1), _smallVal(1E-10),
-            _resumeShypFileName(""), _outputInfoFile(""), _weightFile(""), _withConstantLearner(false), _fastResumeProcess(true) {}
+            _resumeShypFileName(""), _outputInfoFile(""), _weightFile(""), _withConstantLearner(false), _fastResumeProcess(true), _isParallel(false) {}
         
         /**
          * Start the learning process.
@@ -86,6 +86,10 @@ namespace MultiBoost {
         virtual vector<BaseLearner*> getHypotheses();
 
         virtual vector<AlphaReal> getErrors();
+
+        virtual void setShypFileName(string newFileName);
+
+        virtual void setParallel();
 
         /**
          * For SoftCascade
@@ -221,7 +225,8 @@ namespace MultiBoost {
         int     _numIterations;
         int     _maxTime; //!< Time limit for the whole processing. Default: no time limit (-1).
         AlphaReal  _theta; //!< the value of theta. Default = 0.
-        
+        bool _isParallel;
+
         /**
          * Verbose level.
          * There are three levels of verbosity:
