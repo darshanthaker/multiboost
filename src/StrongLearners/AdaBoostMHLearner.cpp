@@ -67,12 +67,12 @@ namespace MultiBoost {
                 
         ///////////////////////////////////////////////////
         // get the output strong hypothesis file name, if given
-        if ( args.hasArgument("shypname") )
+        if ( args.hasArgument("shypname") && !_isParallel )
             args.getValue("shypname", 0, _shypFileName);
-        else
+        else if (!_isParallel) {
             _shypFileName = string(SHYP_NAME);
-
-        _shypFileName = nor_utils::addAndCheckExtension(_shypFileName, SHYP_EXTENSION);
+            _shypFileName = nor_utils::addAndCheckExtension(_shypFileName, SHYP_EXTENSION);
+        }
 
         ///////////////////////////////////////////////////
         // get the output strong hypothesis file name, if given
@@ -146,7 +146,6 @@ namespace MultiBoost {
         if ( args.hasArgument("weights") ) {
             args.getValue("weights", 0, _weightFile );
         }
-                
     }
 
     vector<BaseLearner*> AdaBoostMHLearner::getHypotheses() {
@@ -155,6 +154,15 @@ namespace MultiBoost {
 
     vector<AlphaReal> AdaBoostMHLearner::getErrors() {
         return _foundErrors;
+    }
+
+    void AdaBoostMHLearner::setShypFileName(string newFileName) {
+        _shypFileName = newFileName;
+        printf("[set] shypFileName = %s\n", _shypFileName.c_str());
+    }
+
+    void AdaBoostMHLearner::setParallel() {
+        _isParallel = true;
     }
 
     // -----------------------------------------------------------------------------------
@@ -909,6 +917,7 @@ namespace MultiBoost {
     void AdaBoostMHLearner::run( const nor_utils::Args& args, InputData* pTrainingData, const string baseLearnerName, const int numIterations, vector<BaseLearner*>& foundHypotheses )
     {
                 
+        printf("[run] shypFileName = %s\n", _shypFileName.c_str());
         // get the registered weak learner (type from name)
         BaseLearner* pWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner(baseLearnerName);
@@ -919,6 +928,9 @@ namespace MultiBoost {
         BaseLearner* pConstantWeakHypothesisSource = 
             BaseLearner::RegisteredLearners().getLearner("ConstantLearner");
                 
+        resumeWeakLearners(pTrainingData);
+        Serialization ss(_shypFileName, _isShypCompressed );
+        ss.writeHeader(_baseLearnerName); // this must go after resumeProcess has been called
                                                         
         if (_verbose == 1)
             cout << "Learning in progress... " << flush;
@@ -988,11 +1000,14 @@ namespace MultiBoost {
                 //          break; 
             }
                                                 
+            ss.appendHypothesis(t, pWeakHypothesis);
             // Add it to the internal list of weak hypotheses
             foundHypotheses.push_back(pWeakHypothesis); 
                         
         }  // loop on iterations
         /////////////////////////////////////////////////////////
+        
+        ss.writeFooter();
                 
         if (_verbose > 0)
             cout << "AdaBoost Learning completed." << endl;

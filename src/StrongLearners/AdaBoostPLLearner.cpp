@@ -222,16 +222,23 @@ namespace MultiBoost {
     {
         ThreadInfo *info = (ThreadInfo *) arg;
         int tid = info->tid;
+        string shypFileName = info->shypFileName;
         printf("[startWorker] tid = %d\n", tid);
         int numIterations = info->numIterations;
         string trainFileName = partition_data->fileNames[tid];
         InputData* pTrainingData = partition_data->partitions[tid];
-        //GenericStrongLearner*  pModel = info->base;
+        string result; 
+        ostringstream convert;   // stream used for the conversion
+        convert << tid;
+        result = convert.str();
+        string newName = shypFileName.substr(0, shypFileName.find(".xml"));
+        string newFileName = newName + result + ".xml";
+
         AdaBoostMHLearner *MHLearner = new AdaBoostMHLearner();
-        //printf("[startWorker] about to run MHLearner\n");
+        MHLearner->setParallel();
+        MHLearner->setShypFileName(newFileName);
         MHLearner->run(info->args, pTrainingData, "SingleStumpLearner",
                 numIterations, weakOutputs[tid]->weakHypotheses);
-        //printf("[startWorker] done with MHLearner\n");
         pthread_barrier_wait(&workerBarrier);
         pthread_exit(NULL);	
     }
@@ -268,11 +275,12 @@ namespace MultiBoost {
 
         for (tid = 0; tid < _nWorkers; tid++)
         {		
-            ThreadInfo *threadInfo = new ThreadInfo(tid, args, _numIterations);
+            ThreadInfo *threadInfo = new ThreadInfo(tid, args, _numIterations, _shypFileName);
             pthread_create(&threads[tid], NULL, startWorker, (void*) threadInfo);
         }	
         pthread_barrier_wait(&workerBarrier);
 
+        deletePartitions(); 
     }
 
     // -------------------------------------------------------------------------
