@@ -52,20 +52,6 @@ namespace MultiBoost {
     // -------------------------------------------------------------------------
     // -------------------------------------------------------------------------
 
-    typedef struct thread_info
-    {
-	int tid;
-	int numIterations;
-	int low;
-	int high;
-	int numClasses;
-	int numExamples;
-	int numWorkers;
-	vector<ExampleResults*>& results;
-	vector <WeakOutput>& weakOutputs;
-	InputData *pdata;
-    }thread*;
-	
     AdaBoostPLClassifier::AdaBoostPLClassifier(const nor_utils::Args &args, int verbose)
         : _verbose(verbose), _args(args)
     {
@@ -293,37 +279,46 @@ namespace MultiBoost {
             delete (*it);
     }
 
-    void* startMerge(void* arg)  
+    /*void* startMerge(void* arg)  
     {
-	    thread info = (thread) arg;
-            // for every point
-            for (int i = info->low; i < info->high; ++i)
-            {
-	     	// a reference for clarity and speed
-             	vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+        ThreadInfoPL *info  = (ThreadInfoPL*) arg;
+        int newtid = info->tid;
+        int newnumIterations = info->numIterations;
+        int newlow = info->low;
+        int newhigh = info->high;
+        int newnumClasses = info->numClasses;
+        int newnumExamples = info->numExamples;
+        int newnumWorkers = info->numWorkers;
+        vector<ExampleResults*>& newresults = info->results;
+        vector<WeakOutput>& newweakOutputs = info->weakOutputs;
+        InputData *newpData = info->pData;
+        // for every point
+        for (int i = info->low; i < info->high; ++i)
+        {
+            // a reference for clarity and speed
+            vector<AlphaReal>& currVotesVector = (info->results)[i]->getVotesVector();
 
-            	// for every point
-	   	for (int t = 0; t < numIterations; ++t)
-            	{
-                	// for every class
-                	for (int l = 0; l < numClasses; ++l)
-                	{
-                    		vector<BaseLearner*> column;
-                    		AlphaReal alpha  = 0;
-                    		for (int m = 0; m < numWorkers; ++m)
-                    		{
-                        		//change to use WeakOutputs
-                        		WeakOutput weakHyp = weakOutputs[m];
-				        column.push_back(weakHyp.weakHypotheses[t]);
-				        alpha += weakHyp.weakHypotheses[t]->getAlpha();
-                    		}
-                    		alpha /= (AlphaReal) numWorkers;
-                    		currVotesVector[l] += alpha * merge(pData, column, i, l, numWorkers);
-                	}
-            	}
+            // for every point
+            for (int t = 0; t < info->numIterations; ++t)
+            {
+                // for every class
+                for (int l = 0; l < info->numClasses; ++l)
+                {
+                    vector<BaseLearner*> column;
+                    AlphaReal alpha  = 0;
+                    for (int m = 0; m < info->numWorkers; ++m)
+                    {
+                        //change to use WeakOutputs
+                        WeakOutput weakHyp = (info->weakOutputs)[m];
+                        column.push_back(weakHyp.weakHypotheses[t]);
+                        alpha += weakHyp.weakHypotheses[t]->getAlpha();
+                    }
+                    alpha /= (AlphaReal) info->numWorkers;
+                    currVotesVector[l] += alpha * merge(info->pData, column, i, l, info->numWorkers);
+                }
             }
-	
-    }
+        }
+    }*/
 
     //Takes in a array of weakHypotheses rather than just one vector of weak Hypotheses
     void AdaBoostPLClassifier::computeMergeResults(InputData *pData, vector<WeakOutput>& weakOutputs, vector< ExampleResults* >& results, int numIterations, int numWorkers)
@@ -362,48 +357,13 @@ namespace MultiBoost {
                     );
         }
 
-        // for every feature: 1..T
-        //for (whyIt = weakHypotheses.begin(), t = 0;
-        //     whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
-/*       
-	 for (int t = 0; t < numIterations; ++t)
+        for (int i = 0; i < numExamples; ++i)
         {
-            //BaseLearner* currWeakHyp = *whyIt;
-            //AlphaReal alpha = currWeakHyp->getAlpha();
+            // a reference for clarity and speed
+            vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
 
             // for every point
-            for (int i = 0; i < numExamples; ++i)
-            {
-                // a reference for clarity and speed
-                vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
-
-                // for every class
-                for (int l = 0; l < numClasses; ++l)
-                {
-                    vector<BaseLearner*> column;
-                    AlphaReal alpha  = 0;
-                    for (int m = 0; m < numWorkers; ++m)
-                    {
-                        //change to use WeakOutputs
-                        WeakOutput weakHyp = weakOutputs[m];
-                        column.push_back(weakHyp.weakHypotheses[t]);
-                        alpha += weakHyp.weakHypotheses[t]->getAlpha();
-                    }
-                    alpha /= (AlphaReal) numWorkers;
-                    currVotesVector[l] += alpha * merge(pData, column, i, l, numWorkers);
-                    //currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
-                }
-            }
-        }
-*/
-
-	for (int i = 0; i < numExamples; ++i)
-        {
-	     // a reference for clarity and speed
-             vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
-
-            // for every point
-	    for (int t = 0; t < numIterations; ++t)
+            for (int t = 0; t < numIterations; ++t)
             {
                 // for every class
                 for (int l = 0; l < numClasses; ++l)
@@ -423,755 +383,744 @@ namespace MultiBoost {
             }
         }
 
-	pthread_t threads[numWorkers];
-	thread thread_infos[numWorkers];
-	//Parallelize
-	int rc;
-	for (int t = 0; t < numWorkers; ++t)
-	{
-		  if (i == numWorkers - 1)
-		  {
-		    thread_infos[t]->low = (t * numExamples/numWorkers);
-		    thread_infos[t]->high = numExamples;
-		  }
-		  else
-		  {
-		    thread_infos[t]->low = (t * numExamples/numWorkers);
-		    thread_infos[t]->high = ((t+1) * numExamples/numWorkers) ;
-		  }
-		thread[t]->tid = t;
-		thread[t]->numClasses = numClasses;
-		thread[t]->numIterations = numIterations;
-		thread[t]->numWorkers = numWorkers;
-		thread[t]->results = results;
-		thread[t]->weakOutputs = weakOutputs;
-		thread[t]->pdata = pdata;
-		rc = pthread_create(&threads[t], NULL, startMerge, (void *)thread); 
-      		if (rc) {
-         		printf("ERROR; return code from pthread_create() 
-              		  is %d\n", rc);
-        		 exit(-1);
-         	}
-      }
-	}
-
-        if (pOutInfo)
-            delete pOutInfo;
-
+        /*pthread_t threads[numWorkers];
+        //ThreadInfoPL *thread_infos[numWorkers];
+        //Parallelize
+        int rc;
+        for (int i = 0; i < numWorkers; i++)
+        {
+            int low = (i * numExamples/numWorkers);
+            int high;
+            if (i == numWorkers - 1)
+            {
+                high = numExamples;
+            }
+            else
+            {
+                high = ((i+1) * numExamples/numWorkers);
+            }
+            ThreadInfoPL *thread_infos = new ThreadInfoPL(i, numClasses, numIterations,
+                numWorkers, numExamples, results, weakOutputs, pData, low, high);
+            rc = pthread_create(&threads[i], NULL, startMerge, (void *)thread_infos); 
+            if (rc) {
+                printf("Error creating thread\n");
+                exit(-1);
+            }
+        }*/
     }
 
-    int AdaBoostPLClassifier::merge(InputData *pData, vector<BaseLearner*>& column, int point, int label, int numWorkers) {
-        int counter = 0;
-        vector<BaseLearner*>::const_iterator whyIt;
+int AdaBoostPLClassifier::merge(InputData *pData, vector<BaseLearner*>& column, int point, int label, int numWorkers) {
+    int counter = 0;
+    vector<BaseLearner*>::const_iterator whyIt;
 
-        //for (whyIt = weakHypotheses.begin(), t = 0;
-        //     whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
-        int m;
-        for (whyIt = column.begin(), m = 0; whyIt != column.end() && m < numWorkers; ++whyIt, ++m) {
-            BaseLearner* currWeakHypothesis = *whyIt;
-            //currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
-            //TODO: Find out where the classify method is defined...
-            if (currWeakHypothesis->classify(pData, point, label) > 0) counter++;
-            else counter--;
-        }
-        if (counter > 0) return 1;
-        if (counter == 0) return 0;
-        return -1;
+    //for (whyIt = weakHypotheses.begin(), t = 0;
+    //     whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
+    int m;
+    for (whyIt = column.begin(), m = 0; whyIt != column.end() && m < numWorkers; ++whyIt, ++m) {
+        BaseLearner* currWeakHypothesis = *whyIt;
+        //currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
+        //TODO: Find out where the classify method is defined...
+        if (currWeakHypothesis->classify(pData, point, label) > 0) counter++;
+        else counter--;
     }
+    if (counter > 0) return 1;
+    if (counter == 0) return 0;
+    return -1;
+}
 
 
-    // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
-    void AdaBoostPLClassifier::saveConfusionMatrix(const string& dataFileName, const string& shypFileName,
-            const string& outFileName)
+void AdaBoostPLClassifier::saveConfusionMatrix(const string& dataFileName, const string& shypFileName,
+        const string& outFileName)
+{
+    InputData* pData = loadInputData(dataFileName, shypFileName);
+
+    if (_verbose > 0)
+        cout << "Loading strong hypothesis..." << flush;
+
+    vector<WeakOutput> weakOutputs;
+
+    for (int m = 0; m < _nWorkers; m++)
     {
-        InputData* pData = loadInputData(dataFileName, shypFileName);
+        // The class that loads the weak hypotheses
+        UnSerialization us;
 
-        if (_verbose > 0)
-            cout << "Loading strong hypothesis..." << flush;
+        // Where to put the weak hypotheses
+        vector<BaseLearner*> weakHypotheses;
 
-        vector<WeakOutput> weakOutputs;
+        WeakOutput weakOutput;
 
-        for (int m = 0; m < _nWorkers; m++)
+        string result; 
+        ostringstream convert;   // stream used for the conversion
+        convert << m;
+        result = convert.str();
+        string newName = shypFileName.substr(0, shypFileName.find(".xml") - 1);
+        string newShypfileName = newName + result + ".xml";
+
+        printf("shypFilename = %s\n", newShypfileName.c_str());
+
+        // loads them
+        us.loadHypotheses(newShypfileName, weakHypotheses, pData);
+
+        weakOutput.weakHypotheses = weakHypotheses;		
+
+        weakOutputs.push_back(weakOutput);
+    }
+
+    // where the results go
+    vector< ExampleResults* > results;
+
+    if (_verbose > 0)
+        cout << "Classifying..." << flush;
+
+
+    //pdata, weakoutputs, results, numiterations, numworkers
+    computeMergeResults( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size());
+    // get the results
+    //computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
+
+    const int numClasses = pData->getNumClasses();
+    const int numExamples = pData->getNumExamples();
+
+    ofstream outFile(outFileName.c_str());
+
+    //////////////////////////////////////////////////////////////////////////
+
+    for (int l = 0; l < numClasses; ++l)
+        outFile << '\t' << pData->getClassMap().getNameFromIdx(l);
+    outFile << endl;
+
+    for (int l = 0; l < numClasses; ++l)
+    {
+        vector<int> winnerCount(numClasses, 0);
+        for (int i = 0; i < numExamples; ++i)
         {
-            // The class that loads the weak hypotheses
-            UnSerialization us;
-
-            // Where to put the weak hypotheses
-            vector<BaseLearner*> weakHypotheses;
-
-            WeakOutput weakOutput;
-
-            string result; 
-            ostringstream convert;   // stream used for the conversion
-            convert << m;
-            result = convert.str();
-            string newName = shypFileName.substr(0, shypFileName.find(".xml") - 1);
-            string newShypfileName = newName + result + ".xml";
-
-            printf("shypFilename = %s\n", newShypfileName.c_str());
-
-            // loads them
-            us.loadHypotheses(newShypfileName, weakHypotheses, pData);
-
-            weakOutput.weakHypotheses = weakHypotheses;		
-
-            weakOutputs.push_back(weakOutput);
+            if ( pData->hasPositiveLabel(i,l) )
+                ++winnerCount[ results[i]->getWinner().first ];
         }
 
-        // where the results go
-        vector< ExampleResults* > results;
+        // class name
+        outFile << pData->getClassMap().getNameFromIdx(l);
 
-        if (_verbose > 0)
-            cout << "Classifying..." << flush;
+        for (int j = 0; j < numClasses; ++j)
+            outFile << '\t' << winnerCount[j];
 
-
-        //pdata, weakoutputs, results, numiterations, numworkers
-        computeMergeResults( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size());
-        // get the results
-        //computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
-
-        const int numClasses = pData->getNumClasses();
-        const int numExamples = pData->getNumExamples();
-
-        ofstream outFile(outFileName.c_str());
-
-        //////////////////////////////////////////////////////////////////////////
-
-        for (int l = 0; l < numClasses; ++l)
-            outFile << '\t' << pData->getClassMap().getNameFromIdx(l);
         outFile << endl;
-
-        for (int l = 0; l < numClasses; ++l)
-        {
-            vector<int> winnerCount(numClasses, 0);
-            for (int i = 0; i < numExamples; ++i)
-            {
-                if ( pData->hasPositiveLabel(i,l) )
-                    ++winnerCount[ results[i]->getWinner().first ];
-            }
-
-            // class name
-            outFile << pData->getClassMap().getNameFromIdx(l);
-
-            for (int j = 0; j < numClasses; ++j)
-                outFile << '\t' << winnerCount[j];
-
-            outFile << endl;
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-
-        if (_verbose > 0)
-            cout << "Done!" << endl;
-
-        // delete the input data file
-        if (pData)
-            delete pData;
-
-        vector<ExampleResults*>::iterator it;
-        for (it = results.begin(); it != results.end(); ++it)
-            delete (*it);
     }
 
-    // -------------------------------------------------------------------------
+    //////////////////////////////////////////////////////////////////////////
 
-    void AdaBoostPLClassifier::savePosteriors(const string& dataFileName, const string& shypFileName,
-            const string& outFileName, int numIterations, int period)
+    if (_verbose > 0)
+        cout << "Done!" << endl;
+
+    // delete the input data file
+    if (pData)
+        delete pData;
+
+    vector<ExampleResults*>::iterator it;
+    for (it = results.begin(); it != results.end(); ++it)
+        delete (*it);
+}
+
+// -------------------------------------------------------------------------
+
+void AdaBoostPLClassifier::savePosteriors(const string& dataFileName, const string& shypFileName,
+        const string& outFileName, int numIterations, int period)
+{
+    InputData* pData = loadInputData(dataFileName, shypFileName);
+
+    if (_verbose > 0)
+        cout << "Loading strong hypothesis..." << flush;
+
+    // The class that loads the weak hypotheses
+    UnSerialization us;
+
+    // Where to put the weak hypotheses
+    vector<BaseLearner*> weakHypotheses;
+
+    // loads them
+    us.loadHypotheses(shypFileName, weakHypotheses, pData);
+
+    // where the results go
+    vector< ExampleResults* > results;
+
+    if (_verbose > 0)
+        cout << "Classifying..." << flush;
+
+    if ( period == 0 )
+        period=numIterations;
+
+    // get the results
+    computeResults( pData, weakHypotheses, results, period );
+
+    const int numClasses = pData->getNumClasses();
+    const int numExamples = pData->getNumExamples();
+
+    ofstream outFile(outFileName.c_str());
+    string exampleName;
+
+    if (_verbose > 0)
+        cout << "Output posteriors..." << flush;
+
+    if (period<numIterations)
+        outFile << period << endl;
+
+    for (int i = 0; i < numExamples; ++i)
     {
-        InputData* pData = loadInputData(dataFileName, shypFileName);
-
-        if (_verbose > 0)
-            cout << "Loading strong hypothesis..." << flush;
-
-        // The class that loads the weak hypotheses
-        UnSerialization us;
-
-        // Where to put the weak hypotheses
-        vector<BaseLearner*> weakHypotheses;
-
-        // loads them
-        us.loadHypotheses(shypFileName, weakHypotheses, pData);
-
-        // where the results go
-        vector< ExampleResults* > results;
-
-        if (_verbose > 0)
-            cout << "Classifying..." << flush;
-
-        if ( period == 0 )
-            period=numIterations;
-
-        // get the results
-        computeResults( pData, weakHypotheses, results, period );
-
-        const int numClasses = pData->getNumClasses();
-        const int numExamples = pData->getNumExamples();
-
-        ofstream outFile(outFileName.c_str());
-        string exampleName;
-
-        if (_verbose > 0)
-            cout << "Output posteriors..." << flush;
-
-        if (period<numIterations)
-            outFile << period << endl;
-
-        for (int i = 0; i < numExamples; ++i)
-        {
-            // output the name if it exists, otherwise the number
-            // of the example
-            exampleName = pData->getExampleName(i);
-            if ( !exampleName.empty() )
-                outFile << exampleName << ',';
-
-            // output the posteriors
-            outFile << results[i]->getVotesVector()[0];
-            for (int l = 1; l < numClasses; ++l)
-                outFile << ',' << results[i]->getVotesVector()[l];
-            outFile << '\n';
-        }
-
-
-        for (int p=period; p<numIterations; p+=period )
-        {
-            if ( (p+period) > weakHypotheses.size() ) break;
-
-            continueComputingResults(pData, weakHypotheses, results, p, p+period );
-            if ( _verbose > 0) {
-                cout << "Write out the posterios for iteration " << p << endl;
-            }
-            outFile << p+period << endl;
-            for (int i = 0; i < numExamples; ++i)
-            {
-                // output the name if it exists, otherwise the number
-                // of the example
-                exampleName = pData->getExampleName(i);
-                if ( !exampleName.empty() )
-                    outFile << exampleName << ',';
-
-                // output the posteriors
-                outFile << results[i]->getVotesVector()[0];
-                for (int l = 1; l < numClasses; ++l)
-                    outFile << ',' << results[i]->getVotesVector()[l];
-                outFile << '\n';
-            }
-
-        }
-
-        if (_verbose > 0)
-            cout << "Done!" << endl;
-
-        if (_verbose > 1)
-        {
-            cout << "\nClass order (You can change it in the header of the data file):" << endl;
-            for (int l = 0; l < numClasses; ++l)
-                cout << "- " << pData->getClassMap().getNameFromIdx(l) << endl;
-        }
-
-        // delete the input data file
-        if (pData)
-            delete pData;
-
-        vector<ExampleResults*>::iterator it;
-        for (it = results.begin(); it != results.end(); ++it)
-            delete (*it);
-    }
-
-
-    // -------------------------------------------------------------------------
-
-
-    void AdaBoostPLClassifier::saveCalibratedPosteriors(const string& dataFileName, const string& shypFileName,
-            const string& outFileName, int numIterations)
-    {
-        InputData* pData = loadInputData(dataFileName, shypFileName);
-
-        if (_verbose > 0)
-            cout << "Loading strong hypothesis..." << flush;
-
-        // The class that loads the weak hypotheses
-        UnSerialization us;
-
-        // Where to put the weak hypotheses
-        vector<BaseLearner*> weakHypotheses;
-
-        // loads them
-        us.loadHypotheses(shypFileName, weakHypotheses, pData);
-
-        // where the results go
-        vector< ExampleResults* > results;
-
-        if (_verbose > 0)
-            cout << "Classifying..." << flush;
-
-        // get the results
-        computeResults( pData, weakHypotheses, results, numIterations );
-
-        const int numClasses = pData->getNumClasses();
-        const int numExamples = pData->getNumExamples();
-
-        ofstream outFile(outFileName.c_str());
-        string exampleName;
-
-        if (_verbose > 0)
-            cout << "Output posteriors..." << flush;
-
-        for (int i = 0; i < numExamples; ++i)
-        {
-            // output the name if it exists, otherwise the number
-            // of the example
-            exampleName = pData->getExampleName(i);
-            if ( !exampleName.empty() )
-                outFile << exampleName << ',';
-
-            // output the posteriors
-            outFile << results[i]->getVotesVector()[0];
-            for (int l = 1; l < numClasses; ++l)
-                outFile << ',' << results[i]->getVotesVector()[l];
-            outFile << '\n';
-        }
-
-        if (_verbose > 0)
-            cout << "Done!" << endl;
-
-        if (_verbose > 1)
-        {
-            cout << "\nClass order (You can change it in the header of the data file):" << endl;
-            for (int l = 0; l < numClasses; ++l)
-                cout << "- " << pData->getClassMap().getNameFromIdx(l) << endl;
-        }
-
-        // delete the input data file
-        if (pData)
-            delete pData;
-
-        vector<ExampleResults*>::iterator it;
-        for (it = results.begin(); it != results.end(); ++it)
-            delete (*it);
-    }
-
-
-
-    // -------------------------------------------------------------------------
-
-    void AdaBoostPLClassifier::saveLikelihoods(const string& dataFileName, const string& shypFileName,
-            const string& outFileName, int numIterations)
-    {
-        InputData* pData = loadInputData(dataFileName, shypFileName);
-
-        if (_verbose > 0)
-            cout << "Loading strong hypothesis..." << flush;
-
-        // The class that loads the weak hypotheses
-        UnSerialization us;
-
-        // Where to put the weak hypotheses
-        vector<BaseLearner*> weakHypotheses;
-
-        // loads them
-        us.loadHypotheses(shypFileName, weakHypotheses, pData);
-
-        // where the results go
-        vector< ExampleResults* > results;
-
-        if (_verbose > 0)
-            cout << "Classifying..." << flush;
-
-        const int numClasses = pData->getNumClasses();
-        const int numExamples = pData->getNumExamples();
-
-
-        ofstream outFile(outFileName.c_str());
-        string exampleName;
-
-        if (_verbose > 0)
-            cout << "Output likelihoods..." << flush;
-
-        // get the results
-        /////////////////////////////////////////////////////////////////////
-        // computeResults( pData, weakHypotheses, results, numIterations );
-        assert( !weakHypotheses.empty() );
-
-        // Initialize the output info
-        OutputInfo* pOutInfo = NULL;
-
-        if ( !_outputInfoFile.empty() )
-            pOutInfo = new OutputInfo(_args);
-
-        // Creating the results structures. See file Structures.h for the
-        // PointResults structure
-        results.clear();
-        results.reserve(numExamples);
-        for (int i = 0; i < numExamples; ++i)
-            results.push_back( new ExampleResults(i, numClasses) );
-
-        // sum votes for classes
-        vector< AlphaReal > votesForExamples( numClasses );
-        vector< AlphaReal > expVotesForExamples( numClasses );
-
-        // iterator over all the weak hypotheses
-        vector<BaseLearner*>::const_iterator whyIt;
-        int t;
-
-        pOutInfo->initialize( pData );
-
-        // for every feature: 1..T
-        for (whyIt = weakHypotheses.begin(), t = 0;
-                whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
-        {
-            BaseLearner* currWeakHyp = *whyIt;
-            AlphaReal alpha = currWeakHyp->getAlpha();
-
-            // for every point
-            for (int i = 0; i < numExamples; ++i)
-            {
-                // a reference for clarity and speed
-                vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
-
-                // for every class
-                for (int l = 0; l < numClasses; ++l)
-                    currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
-            }
-
-            // if needed output the step-by-step information
-            if ( pOutInfo )
-            {
-                pOutInfo->outputIteration(t);
-                pOutInfo->outputCustom(pData, currWeakHyp);
-
-                // Margins and edge requires an update of the weight,
-                // therefore I keep them out for the moment
-                //outInfo.outputMargins(pData, currWeakHyp);
-                //outInfo.outputEdge(pData, currWeakHyp);
-
-                pOutInfo->endLine();
-
-            } // for (int i = 0; i < numExamples; ++i)
-            // calculate likelihoods from votes
-
-            fill( votesForExamples.begin(), votesForExamples.end(), 0.0 );
-            AlphaReal lLambda = 0.0;
-            for (int i = 0; i < numExamples; ++i)
-            {
-                // a reference for clarity and speed
-                vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
-                AlphaReal sumExp = 0.0;
-                // for every class
-                for (int l = 0; l < numClasses; ++l)
-                {
-                    expVotesForExamples[l] =  exp( currVotesVector[l] ) ;
-                    sumExp += expVotesForExamples[l];
-                }
-
-                if ( sumExp > numeric_limits<AlphaReal>::epsilon() )
-                {
-                    for (int l = 0; l < numClasses; ++l)
-                    {
-                        expVotesForExamples[l] /= sumExp;
-                    }
-                }
-
-                Example ex = pData->getExample( results[i]->getIdx() );
-                vector<Label> labs = ex.getLabels();
-                AlphaReal m = numeric_limits<AlphaReal>::infinity();
-                for (int l = 0; l < numClasses; ++l)
-                {
-                    if ( labs[l].y > 0 )
-                    {
-                        if ( expVotesForExamples[l] > numeric_limits<AlphaReal>::epsilon() )
-                        {
-                            AlphaReal logVal = log( expVotesForExamples[l] );
-
-                            if ( logVal != m ) {
-                                lLambda += ( ( 1.0/(AlphaReal)numExamples ) * logVal );
-                            }
-                        }
-                    }
-                }
-
-
-            }
-
-
-            outFile << t << "\t" << lLambda ;
-            outFile << '\n';
-
-            outFile.flush();
-        }
-
-        if (pOutInfo)
-            delete pOutInfo;
-
-        // computeResults( pData, weakHypotheses, results, numIterations );
-        ///////////////////////////////////////////////////////////////////////////////////
-
-
-        /*
-           for (int i = 0; i < numExamples; ++i)
-           {
         // output the name if it exists, otherwise the number
         // of the example
         exampleName = pData->getExampleName(i);
         if ( !exampleName.empty() )
-        outFile << exampleName << ',';
+            outFile << exampleName << ',';
 
         // output the posteriors
         outFile << results[i]->getVotesVector()[0];
         for (int l = 1; l < numClasses; ++l)
-        outFile << ',' << results[i]->getVotesVector()[l];
+            outFile << ',' << results[i]->getVotesVector()[l];
         outFile << '\n';
-        }
-        */
-
-        if (_verbose > 0)
-            cout << "Done!" << endl;
-
-        if (_verbose > 1)
-        {
-            cout << "\nClass order (You can change it in the header of the data file):" << endl;
-            for (int l = 0; l < numClasses; ++l)
-                cout << "- " << pData->getClassMap().getNameFromIdx(l) << endl;
-        }
-
-        // delete the input data file
-        if (pData)
-            delete pData;
-
-        vector<ExampleResults*>::iterator it;
-        for (it = results.begin(); it != results.end(); ++it)
-            delete (*it);
     }
 
 
-    // -------------------------------------------------------------------------
-    // -------------------------------------------------------------------------
-
-    InputData* AdaBoostPLClassifier::loadInputData(const string& dataFileName, const string& shypFileName)
+    for (int p=period; p<numIterations; p+=period )
     {
-        // open file
-        ifstream inFile(shypFileName.c_str());
-        if (!inFile.is_open())
-        {
-            cerr << "ERROR: Cannot open strong hypothesis file <" << shypFileName << ">!" << endl;
-            exit(1);
+        if ( (p+period) > weakHypotheses.size() ) break;
+
+        continueComputingResults(pData, weakHypotheses, results, p, p+period );
+        if ( _verbose > 0) {
+            cout << "Write out the posterios for iteration " << p << endl;
         }
-
-        // Declares the stream tokenizer
-        nor_utils::StreamTokenizer st(inFile, "<>\n\r\t");
-
-        // Move until it finds the multiboost tag
-        if ( !UnSerialization::seekSimpleTag(st, "multiboost") )
-        {
-            // no multiboost tag found: this is not the correct file!
-            cerr << "ERROR: Not a valid MultiBoost Strong Hypothesis file!!" << endl;
-            exit(1);
-        }
-
-        // Move until it finds the algo tag
-        string basicLearnerName = UnSerialization::seekAndParseEnclosedValue<string>(st, "algo");
-
-        // Check if the weak learner exists
-        if ( !BaseLearner::RegisteredLearners().hasLearner(basicLearnerName) )
-        {
-            cerr << "ERROR: Weak learner <" << basicLearnerName << "> not registered!!" << endl;
-            exit(1);
-        }
-
-        // get the training input data, and load it
-        BaseLearner* baseLearner = BaseLearner::RegisteredLearners().getLearner(basicLearnerName);
-        baseLearner->initLearningOptions(_args);
-        InputData* pData = baseLearner->createInputData();
-
-        // set the non-default arguments of the input data
-        pData->initOptions(_args);
-        // load the data
-        pData->load(dataFileName, IT_TEST, _verbose);
-
-        return pData;
-    }
-
-    // -------------------------------------------------------------------------
-
-    // Returns the results into ptRes
-    void AdaBoostPLClassifier::computeResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
-            vector< ExampleResults* >& results, int numIterations)
-    {
-        assert( !weakHypotheses.empty() );
-
-        const int numClasses = pData->getNumClasses();
-        const int numExamples = pData->getNumExamples();
-
-        // Initialize the output info
-        OutputInfo* pOutInfo = NULL;
-
-        if ( !_outputInfoFile.empty() )
-        {
-            pOutInfo = new OutputInfo(_args);
-
-        }
-
-
-        // Creating the results structures. See file Structures.h for the
-        // PointResults structure
-        results.clear();
-        results.reserve(numExamples);
+        outFile << p+period << endl;
         for (int i = 0; i < numExamples; ++i)
-            results.push_back( new ExampleResults(i, numClasses) );
+        {
+            // output the name if it exists, otherwise the number
+            // of the example
+            exampleName = pData->getExampleName(i);
+            if ( !exampleName.empty() )
+                outFile << exampleName << ',';
 
-        // iterator over all the weak hypotheses
-        vector<BaseLearner*>::const_iterator whyIt;
-        int t;
+            // output the posteriors
+            outFile << results[i]->getVotesVector()[0];
+            for (int l = 1; l < numClasses; ++l)
+                outFile << ',' << results[i]->getVotesVector()[l];
+            outFile << '\n';
+        }
 
+    }
+
+    if (_verbose > 0)
+        cout << "Done!" << endl;
+
+    if (_verbose > 1)
+    {
+        cout << "\nClass order (You can change it in the header of the data file):" << endl;
+        for (int l = 0; l < numClasses; ++l)
+            cout << "- " << pData->getClassMap().getNameFromIdx(l) << endl;
+    }
+
+    // delete the input data file
+    if (pData)
+        delete pData;
+
+    vector<ExampleResults*>::iterator it;
+    for (it = results.begin(); it != results.end(); ++it)
+        delete (*it);
+}
+
+
+// -------------------------------------------------------------------------
+
+
+void AdaBoostPLClassifier::saveCalibratedPosteriors(const string& dataFileName, const string& shypFileName,
+        const string& outFileName, int numIterations)
+{
+    InputData* pData = loadInputData(dataFileName, shypFileName);
+
+    if (_verbose > 0)
+        cout << "Loading strong hypothesis..." << flush;
+
+    // The class that loads the weak hypotheses
+    UnSerialization us;
+
+    // Where to put the weak hypotheses
+    vector<BaseLearner*> weakHypotheses;
+
+    // loads them
+    us.loadHypotheses(shypFileName, weakHypotheses, pData);
+
+    // where the results go
+    vector< ExampleResults* > results;
+
+    if (_verbose > 0)
+        cout << "Classifying..." << flush;
+
+    // get the results
+    computeResults( pData, weakHypotheses, results, numIterations );
+
+    const int numClasses = pData->getNumClasses();
+    const int numExamples = pData->getNumExamples();
+
+    ofstream outFile(outFileName.c_str());
+    string exampleName;
+
+    if (_verbose > 0)
+        cout << "Output posteriors..." << flush;
+
+    for (int i = 0; i < numExamples; ++i)
+    {
+        // output the name if it exists, otherwise the number
+        // of the example
+        exampleName = pData->getExampleName(i);
+        if ( !exampleName.empty() )
+            outFile << exampleName << ',';
+
+        // output the posteriors
+        outFile << results[i]->getVotesVector()[0];
+        for (int l = 1; l < numClasses; ++l)
+            outFile << ',' << results[i]->getVotesVector()[l];
+        outFile << '\n';
+    }
+
+    if (_verbose > 0)
+        cout << "Done!" << endl;
+
+    if (_verbose > 1)
+    {
+        cout << "\nClass order (You can change it in the header of the data file):" << endl;
+        for (int l = 0; l < numClasses; ++l)
+            cout << "- " << pData->getClassMap().getNameFromIdx(l) << endl;
+    }
+
+    // delete the input data file
+    if (pData)
+        delete pData;
+
+    vector<ExampleResults*>::iterator it;
+    for (it = results.begin(); it != results.end(); ++it)
+        delete (*it);
+}
+
+
+
+// -------------------------------------------------------------------------
+
+void AdaBoostPLClassifier::saveLikelihoods(const string& dataFileName, const string& shypFileName,
+        const string& outFileName, int numIterations)
+{
+    InputData* pData = loadInputData(dataFileName, shypFileName);
+
+    if (_verbose > 0)
+        cout << "Loading strong hypothesis..." << flush;
+
+    // The class that loads the weak hypotheses
+    UnSerialization us;
+
+    // Where to put the weak hypotheses
+    vector<BaseLearner*> weakHypotheses;
+
+    // loads them
+    us.loadHypotheses(shypFileName, weakHypotheses, pData);
+
+    // where the results go
+    vector< ExampleResults* > results;
+
+    if (_verbose > 0)
+        cout << "Classifying..." << flush;
+
+    const int numClasses = pData->getNumClasses();
+    const int numExamples = pData->getNumExamples();
+
+
+    ofstream outFile(outFileName.c_str());
+    string exampleName;
+
+    if (_verbose > 0)
+        cout << "Output likelihoods..." << flush;
+
+    // get the results
+    /////////////////////////////////////////////////////////////////////
+    // computeResults( pData, weakHypotheses, results, numIterations );
+    assert( !weakHypotheses.empty() );
+
+    // Initialize the output info
+    OutputInfo* pOutInfo = NULL;
+
+    if ( !_outputInfoFile.empty() )
+        pOutInfo = new OutputInfo(_args);
+
+    // Creating the results structures. See file Structures.h for the
+    // PointResults structure
+    results.clear();
+    results.reserve(numExamples);
+    for (int i = 0; i < numExamples; ++i)
+        results.push_back( new ExampleResults(i, numClasses) );
+
+    // sum votes for classes
+    vector< AlphaReal > votesForExamples( numClasses );
+    vector< AlphaReal > expVotesForExamples( numClasses );
+
+    // iterator over all the weak hypotheses
+    vector<BaseLearner*>::const_iterator whyIt;
+    int t;
+
+    pOutInfo->initialize( pData );
+
+    // for every feature: 1..T
+    for (whyIt = weakHypotheses.begin(), t = 0;
+            whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
+    {
+        BaseLearner* currWeakHyp = *whyIt;
+        AlphaReal alpha = currWeakHyp->getAlpha();
+
+        // for every point
+        for (int i = 0; i < numExamples; ++i)
+        {
+            // a reference for clarity and speed
+            vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+
+            // for every class
+            for (int l = 0; l < numClasses; ++l)
+                currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
+        }
+
+        // if needed output the step-by-step information
         if ( pOutInfo )
         {
-            pOutInfo->initialize( pData );
-            pOutInfo->outputHeader(pData->getClassMap(),
-                    true, // output iterations
-                    false, // output time
-                    true // endline
-                    );
-        }
+            pOutInfo->outputIteration(t);
+            pOutInfo->outputCustom(pData, currWeakHyp);
 
-        // for every feature: 1..T
-        for (whyIt = weakHypotheses.begin(), t = 0;
-                whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
-        {
-            BaseLearner* currWeakHyp = *whyIt;
-            AlphaReal alpha = currWeakHyp->getAlpha();
+            // Margins and edge requires an update of the weight,
+            // therefore I keep them out for the moment
+            //outInfo.outputMargins(pData, currWeakHyp);
+            //outInfo.outputEdge(pData, currWeakHyp);
 
-            // for every point
-            for (int i = 0; i < numExamples; ++i)
-            {
-                // a reference for clarity and speed
-                vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+            pOutInfo->endLine();
 
-                // for every class
-                for (int l = 0; l < numClasses; ++l)
-                    currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
-            }
+        } // for (int i = 0; i < numExamples; ++i)
+        // calculate likelihoods from votes
 
-            // if needed output the step-by-step information
-            if ( pOutInfo )
-            {
-                pOutInfo->outputIteration(t);
-                //                              pOutInfo->outputError(pData, currWeakHyp);
-                //                              pOutInfo->outTPRFPR(pData);
-                //pOutInfo->outputBalancedError(pData, currWeakHyp);
-                //                              if ( ( t % 1 ) == 0 ) {
-                //                                      pOutInfo->outputROC(pData);
-                //                              }
-
-                pOutInfo->outputCustom(pData, currWeakHyp);
-                // Margins and edge requires an update of the weight,
-                // therefore I keep them out for the moment
-                //outInfo.outputMargins(pData, currWeakHyp);
-                //outInfo.outputEdge(pData, currWeakHyp);
-                pOutInfo->endLine();
-            }
-        }
-
-        if (pOutInfo)
-            delete pOutInfo;
-
-    }
-
-    // -------------------------------------------------------------------------
-
-    // Continue returns the results into ptRes for savePosteriors
-    // must be called the computeResult first!!!
-    void AdaBoostPLClassifier::continueComputingResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
-            vector< ExampleResults* >& results, int fromIteration, int toIteration)
-    {
-        assert( !weakHypotheses.empty() );
-
-        const int numClasses = pData->getNumClasses();
-        const int numExamples = pData->getNumExamples();
-
-
-        // iterator over all the weak hypotheses
-        vector<BaseLearner*>::const_iterator whyIt;
-        int t;
-
-        for (whyIt = weakHypotheses.begin(), t = 0;
-                whyIt != weakHypotheses.end() && t < fromIteration; ++whyIt, ++t) {}
-
-        // for every feature: 1..T
-        for (;whyIt != weakHypotheses.end() && t < toIteration; ++whyIt, ++t)
-        {
-            BaseLearner* currWeakHyp = *whyIt;
-            AlphaReal alpha = currWeakHyp->getAlpha();
-
-            // for every point
-            for (int i = 0; i < numExamples; ++i)
-            {
-                // a reference for clarity and speed
-                vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
-
-                // for every class
-                for (int l = 0; l < numClasses; ++l)
-                    currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
-            }
-        }
-
-    }
-
-    // -------------------------------------------------------------------------
-
-    float AdaBoostPLClassifier::getOverallError( InputData* pData, const vector<ExampleResults*>& results,
-            int atLeastRank )
-    {
-        const int numExamples = pData->getNumExamples();
-        int numErrors = 0;
-
-        assert(atLeastRank >= 0);
-
+        fill( votesForExamples.begin(), votesForExamples.end(), 0.0 );
+        AlphaReal lLambda = 0.0;
         for (int i = 0; i < numExamples; ++i)
         {
-            // if the actual class is not the one with the highest vote in the
-            // vote vector, then it is an error!
-            if ( !results[i]->isWinner( pData->getExample(i), atLeastRank ) )
-                ++numErrors;
-        }
-
-        // makes the error between 0 and 1
-        return (float)numErrors / (float)numExamples;
-    }
-
-    // -------------------------------------------------------------------------
-
-    void AdaBoostPLClassifier::getClassError( InputData* pData, const vector<ExampleResults*>& results,
-            vector<float>& classError, int atLeastRank )
-    {
-        const int numExamples = pData->getNumExamples();
-        const int numClasses = pData->getNumClasses();
-
-        classError.resize( numClasses, 0 );
-
-        assert(atLeastRank >= 0);
-
-        for (int i = 0; i < numExamples; ++i)
-        {
-            // if the actual class is not the one with the highest vote in the
-            // vote vector, then it is an error!
-            if ( !results[i]->isWinner( pData->getExample(i), atLeastRank ) )
+            // a reference for clarity and speed
+            vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+            AlphaReal sumExp = 0.0;
+            // for every class
+            for (int l = 0; l < numClasses; ++l)
             {
-                const vector<Label>& labels = pData->getLabels(i);
-                vector<Label>::const_iterator lIt;
-                for ( lIt = labels.begin(); lIt != labels.end(); ++lIt )
+                expVotesForExamples[l] =  exp( currVotesVector[l] ) ;
+                sumExp += expVotesForExamples[l];
+            }
+
+            if ( sumExp > numeric_limits<AlphaReal>::epsilon() )
+            {
+                for (int l = 0; l < numClasses; ++l)
                 {
-                    if ( lIt->y > 0 )
-                        ++classError[ lIt->idx ];
+                    expVotesForExamples[l] /= sumExp;
                 }
-                //++classError[ pData->getClass(i) ];
             }
+
+            Example ex = pData->getExample( results[i]->getIdx() );
+            vector<Label> labs = ex.getLabels();
+            AlphaReal m = numeric_limits<AlphaReal>::infinity();
+            for (int l = 0; l < numClasses; ++l)
+            {
+                if ( labs[l].y > 0 )
+                {
+                    if ( expVotesForExamples[l] > numeric_limits<AlphaReal>::epsilon() )
+                    {
+                        AlphaReal logVal = log( expVotesForExamples[l] );
+
+                        if ( logVal != m ) {
+                            lLambda += ( ( 1.0/(AlphaReal)numExamples ) * logVal );
+                        }
+                    }
+                }
+            }
+
+
         }
 
-        // makes the error between 0 and 1
-        for (int l = 0; l < numClasses; ++l)
-            classError[l] /= (float)pData->getNumExamplesPerClass(l);
+
+        outFile << t << "\t" << lLambda ;
+        outFile << '\n';
+
+        outFile.flush();
     }
 
-    // -------------------------------------------------------------------------
+    if (pOutInfo)
+        delete pOutInfo;
+
+    // computeResults( pData, weakHypotheses, results, numIterations );
+    ///////////////////////////////////////////////////////////////////////////////////
+
+
+    /*
+       for (int i = 0; i < numExamples; ++i)
+       {
+    // output the name if it exists, otherwise the number
+    // of the example
+    exampleName = pData->getExampleName(i);
+    if ( !exampleName.empty() )
+    outFile << exampleName << ',';
+
+    // output the posteriors
+    outFile << results[i]->getVotesVector()[0];
+    for (int l = 1; l < numClasses; ++l)
+    outFile << ',' << results[i]->getVotesVector()[l];
+    outFile << '\n';
+    }
+    */
+
+    if (_verbose > 0)
+        cout << "Done!" << endl;
+
+    if (_verbose > 1)
+    {
+        cout << "\nClass order (You can change it in the header of the data file):" << endl;
+        for (int l = 0; l < numClasses; ++l)
+            cout << "- " << pData->getClassMap().getNameFromIdx(l) << endl;
+    }
+
+    // delete the input data file
+    if (pData)
+        delete pData;
+
+    vector<ExampleResults*>::iterator it;
+    for (it = results.begin(); it != results.end(); ++it)
+        delete (*it);
+}
+
+
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+
+InputData* AdaBoostPLClassifier::loadInputData(const string& dataFileName, const string& shypFileName)
+{
+    // open file
+    ifstream inFile(shypFileName.c_str());
+    if (!inFile.is_open())
+    {
+        cerr << "ERROR: Cannot open strong hypothesis file <" << shypFileName << ">!" << endl;
+        exit(1);
+    }
+
+    // Declares the stream tokenizer
+    nor_utils::StreamTokenizer st(inFile, "<>\n\r\t");
+
+    // Move until it finds the multiboost tag
+    if ( !UnSerialization::seekSimpleTag(st, "multiboost") )
+    {
+        // no multiboost tag found: this is not the correct file!
+        cerr << "ERROR: Not a valid MultiBoost Strong Hypothesis file!!" << endl;
+        exit(1);
+    }
+
+    // Move until it finds the algo tag
+    string basicLearnerName = UnSerialization::seekAndParseEnclosedValue<string>(st, "algo");
+
+    // Check if the weak learner exists
+    if ( !BaseLearner::RegisteredLearners().hasLearner(basicLearnerName) )
+    {
+        cerr << "ERROR: Weak learner <" << basicLearnerName << "> not registered!!" << endl;
+        exit(1);
+    }
+
+    // get the training input data, and load it
+    BaseLearner* baseLearner = BaseLearner::RegisteredLearners().getLearner(basicLearnerName);
+    baseLearner->initLearningOptions(_args);
+    InputData* pData = baseLearner->createInputData();
+
+    // set the non-default arguments of the input data
+    pData->initOptions(_args);
+    // load the data
+    pData->load(dataFileName, IT_TEST, _verbose);
+
+    return pData;
+}
+
+// -------------------------------------------------------------------------
+
+// Returns the results into ptRes
+void AdaBoostPLClassifier::computeResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
+        vector< ExampleResults* >& results, int numIterations)
+{
+    assert( !weakHypotheses.empty() );
+
+    const int numClasses = pData->getNumClasses();
+    const int numExamples = pData->getNumExamples();
+
+    // Initialize the output info
+    OutputInfo* pOutInfo = NULL;
+
+    if ( !_outputInfoFile.empty() )
+    {
+        pOutInfo = new OutputInfo(_args);
+
+    }
+
+
+    // Creating the results structures. See file Structures.h for the
+    // PointResults structure
+    results.clear();
+    results.reserve(numExamples);
+    for (int i = 0; i < numExamples; ++i)
+        results.push_back( new ExampleResults(i, numClasses) );
+
+    // iterator over all the weak hypotheses
+    vector<BaseLearner*>::const_iterator whyIt;
+    int t;
+
+    if ( pOutInfo )
+    {
+        pOutInfo->initialize( pData );
+        pOutInfo->outputHeader(pData->getClassMap(),
+                true, // output iterations
+                false, // output time
+                true // endline
+                );
+    }
+
+    // for every feature: 1..T
+    for (whyIt = weakHypotheses.begin(), t = 0;
+            whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
+    {
+        BaseLearner* currWeakHyp = *whyIt;
+        AlphaReal alpha = currWeakHyp->getAlpha();
+
+        // for every point
+        for (int i = 0; i < numExamples; ++i)
+        {
+            // a reference for clarity and speed
+            vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+
+            // for every class
+            for (int l = 0; l < numClasses; ++l)
+                currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
+        }
+
+        // if needed output the step-by-step information
+        if ( pOutInfo )
+        {
+            pOutInfo->outputIteration(t);
+            //                              pOutInfo->outputError(pData, currWeakHyp);
+            //                              pOutInfo->outTPRFPR(pData);
+            //pOutInfo->outputBalancedError(pData, currWeakHyp);
+            //                              if ( ( t % 1 ) == 0 ) {
+            //                                      pOutInfo->outputROC(pData);
+            //                              }
+
+            pOutInfo->outputCustom(pData, currWeakHyp);
+            // Margins and edge requires an update of the weight,
+            // therefore I keep them out for the moment
+            //outInfo.outputMargins(pData, currWeakHyp);
+            //outInfo.outputEdge(pData, currWeakHyp);
+            pOutInfo->endLine();
+        }
+    }
+
+    if (pOutInfo)
+        delete pOutInfo;
+
+}
+
+// -------------------------------------------------------------------------
+
+// Continue returns the results into ptRes for savePosteriors
+// must be called the computeResult first!!!
+void AdaBoostPLClassifier::continueComputingResults(InputData* pData, vector<BaseLearner*>& weakHypotheses,
+        vector< ExampleResults* >& results, int fromIteration, int toIteration)
+{
+    assert( !weakHypotheses.empty() );
+
+    const int numClasses = pData->getNumClasses();
+    const int numExamples = pData->getNumExamples();
+
+
+    // iterator over all the weak hypotheses
+    vector<BaseLearner*>::const_iterator whyIt;
+    int t;
+
+    for (whyIt = weakHypotheses.begin(), t = 0;
+            whyIt != weakHypotheses.end() && t < fromIteration; ++whyIt, ++t) {}
+
+    // for every feature: 1..T
+    for (;whyIt != weakHypotheses.end() && t < toIteration; ++whyIt, ++t)
+    {
+        BaseLearner* currWeakHyp = *whyIt;
+        AlphaReal alpha = currWeakHyp->getAlpha();
+
+        // for every point
+        for (int i = 0; i < numExamples; ++i)
+        {
+            // a reference for clarity and speed
+            vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+
+            // for every class
+            for (int l = 0; l < numClasses; ++l)
+                currVotesVector[l] += alpha * currWeakHyp->classify(pData, i, l);
+        }
+    }
+
+}
+
+// -------------------------------------------------------------------------
+
+float AdaBoostPLClassifier::getOverallError( InputData* pData, const vector<ExampleResults*>& results,
+        int atLeastRank )
+{
+    const int numExamples = pData->getNumExamples();
+    int numErrors = 0;
+
+    assert(atLeastRank >= 0);
+
+    for (int i = 0; i < numExamples; ++i)
+    {
+        // if the actual class is not the one with the highest vote in the
+        // vote vector, then it is an error!
+        if ( !results[i]->isWinner( pData->getExample(i), atLeastRank ) )
+            ++numErrors;
+    }
+
+    // makes the error between 0 and 1
+    return (float)numErrors / (float)numExamples;
+}
+
+// -------------------------------------------------------------------------
+
+void AdaBoostPLClassifier::getClassError( InputData* pData, const vector<ExampleResults*>& results,
+        vector<float>& classError, int atLeastRank )
+{
+    const int numExamples = pData->getNumExamples();
+    const int numClasses = pData->getNumClasses();
+
+    classError.resize( numClasses, 0 );
+
+    assert(atLeastRank >= 0);
+
+    for (int i = 0; i < numExamples; ++i)
+    {
+        // if the actual class is not the one with the highest vote in the
+        // vote vector, then it is an error!
+        if ( !results[i]->isWinner( pData->getExample(i), atLeastRank ) )
+        {
+            const vector<Label>& labels = pData->getLabels(i);
+            vector<Label>::const_iterator lIt;
+            for ( lIt = labels.begin(); lIt != labels.end(); ++lIt )
+            {
+                if ( lIt->y > 0 )
+                    ++classError[ lIt->idx ];
+            }
+            //++classError[ pData->getClass(i) ];
+        }
+    }
+
+    // makes the error between 0 and 1
+    for (int l = 0; l < numClasses; ++l)
+        classError[l] /= (float)pData->getNumExamplesPerClass(l);
+}
+
+// -------------------------------------------------------------------------
 
 } // end of namespace MultiBoost

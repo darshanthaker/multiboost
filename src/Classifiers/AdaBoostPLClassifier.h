@@ -56,6 +56,26 @@ namespace MultiBoost {
     class ExampleResults;
     class InputData;
     class BaseLearner;
+
+    class ThreadInfoPL {
+    public:
+        int tid;
+        int numClasses;
+        int numIterations;
+        int numWorkers;
+        int numExamples;
+        vector<ExampleResults*>& results;
+        vector<WeakOutput>& weakOutputs;
+        InputData *pData;
+        int low;
+        int high;
+
+        ThreadInfoPL(int tid, int numClasses, int numIterations, int numWorkers, 
+                    int numExamples, vector<ExampleResults*>& results, 
+                    vector<WeakOutput>& weakOutputs, InputData* pData, int low,
+                    int high) : tid(tid), numClasses(numClasses), numIterations(numIterations), 
+                    numWorkers(numWorkers), numExamples(numExamples), results(results), weakOutputs(weakOutputs), pData(pData), low(low), high(high) {};
+    };
         
     /**
      * Classify a dataset with AdaBoost.PL learner.
@@ -134,7 +154,7 @@ namespace MultiBoost {
 
         virtual int merge(InputData *pData, vector<BaseLearner*>& column, int point, int label,
                            int numWorkers);
-                
+              
         /**
          * Output to a file a confusion matrix with every element separated by a tab.
          * \param dataFileName The file name of the data to be classified.
