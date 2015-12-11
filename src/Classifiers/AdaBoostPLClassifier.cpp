@@ -39,6 +39,7 @@
 #include "Classifiers/ExampleResults.h"
 
 #include "WeakLearners/SingleStumpLearner.h" // for saveSingleStumpFeatureData
+#include "Timer.h"
 
 #include <iomanip> // for setw
 #include <cmath> // for setw
@@ -435,6 +436,7 @@ void AdaBoostPLClassifier::saveConfusionMatrix(const string& dataFileName, const
         const string& outFileName)
 {
     InputData* pData = loadInputData(dataFileName, shypFileName);
+    ggc::Timer t("testing");
 
     if (_verbose > 0)
         cout << "Loading strong hypothesis..." << flush;
@@ -467,7 +469,6 @@ void AdaBoostPLClassifier::saveConfusionMatrix(const string& dataFileName, const
 
         weakOutputs.push_back(weakOutput);
     }
-
     // where the results go
     vector< ExampleResults* > results;
 
@@ -476,7 +477,9 @@ void AdaBoostPLClassifier::saveConfusionMatrix(const string& dataFileName, const
 
 
     //pdata, weakoutputs, results, numiterations, numworkers
+    t.start();
     computeMergeResults( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size());
+    t.stop();
     // get the results
     //computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
 

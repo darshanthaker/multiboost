@@ -42,6 +42,7 @@
 #include "IO/OutputInfo.h"
 #include "IO/InputData.h"
 #include "IO/Serialization.h" // to save the found strong hypothesis
+#include "Timer.h"
 
 #include "WeakLearners/BaseLearner.h"
 #include "StrongLearners/AdaBoostMHLearner.h"
@@ -169,6 +170,7 @@ namespace MultiBoost {
 
     void AdaBoostMHLearner::run(const nor_utils::Args& args)
     {
+        ggc::Timer t("training");
         // load the arguments
         this->getArgs(args);
 
@@ -183,7 +185,6 @@ namespace MultiBoost {
             BaseLearner::RegisteredLearners().getLearner("ConstantLearner");
 
         // get the training input data, and load it
-
         InputData* pTrainingData = pWeakHypothesisSource->createInputData();
         pTrainingData->initOptions(args);
         pTrainingData->load(_trainFileName, IT_TRAIN, _verbose);
@@ -286,6 +287,7 @@ namespace MultiBoost {
         ///////////////////////////////////////////////////////////////////////
 //        _currentMinT = startingIteration; // early stopping
         //TODO: Start timer here
+        t.start();
 
 		if (_earlyStoppingDone)
 			startingIteration = _numIterations;
@@ -359,6 +361,7 @@ namespace MultiBoost {
 
             // append the current weak learner to strong hypothesis file,
             // that is, serialize it.
+            t.stop();
             ss.appendHypothesis(t, pWeakHypothesis);
 
             // Add it to the internal list of weak hypotheses
@@ -407,8 +410,10 @@ namespace MultiBoost {
             } // check for maxtime
             delete pWeakHypothesis;
         }  // loop on iterations
-        //TODO: Timer stop
         /////////////////////////////////////////////////////////
+        if (!_isParallel) {
+            printf("Training time from MH is: %llu\n", t.duration());     
+        }
 
         // write the footer of the strong hypothesis file
         ss.writeFooter();

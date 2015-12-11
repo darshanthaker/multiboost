@@ -535,11 +535,10 @@ int main(int argc, const char* argv[])
         // This hould be changed: the user decides the strong learner
         BaseLearner*  pWeakHypothesisSource = BaseLearner::RegisteredLearners().getLearner(baseLearnerName);
         pModel = pWeakHypothesisSource->createGenericStrongLearner( args );
-        ggc::Timer t("training");
-	    t.start();
+        //ggc::Timer t("training");
+	    //t.start();
         pModel->run(args);
-	    t.stop();   
-	    printf("Training time is : %llu \n",t.duration());
+	    //t.stop();   
     }
     //////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////

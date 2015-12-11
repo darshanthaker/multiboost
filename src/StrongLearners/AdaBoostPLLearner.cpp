@@ -49,6 +49,7 @@
 #include "StrongLearners/AdaBoostMHLearner.h"
 
 #include "Classifiers/AdaBoostPLClassifier.h"
+#include "Timer.h"
 
 pthread_barrier_t workerBarrier; 
 namespace MultiBoost {
@@ -245,6 +246,8 @@ namespace MultiBoost {
 
     void AdaBoostPLLearner::run(const nor_utils::Args& args)
     {
+        ggc::Timer t("training");
+        t.start();
         // load the arguments
         this->getArgs(args);
 
@@ -263,7 +266,9 @@ namespace MultiBoost {
 
         /*BaseLearner* pConstantWeakHypothesisSource = 
           BaseLearner::RegisteredLearners().getLearner("ConstantLearner"); */
+        t.stop();
         createPartitions(args);
+        t.start();
 
         pthread_t threads[_nWorkers];
         int tid;
@@ -281,6 +286,8 @@ namespace MultiBoost {
         pthread_barrier_wait(&workerBarrier);
 
         deletePartitions(); 
+        t.stop();
+	    printf("Training time is : %llu \n",t.duration());
     }
 
     // -------------------------------------------------------------------------

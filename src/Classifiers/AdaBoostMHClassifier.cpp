@@ -40,6 +40,7 @@
 #include "Classifiers/ExampleResults.h"
 
 #include "WeakLearners/SingleStumpLearner.h" // for saveSingleStumpFeatureData
+#include "Timer.h"
 
 #include <iomanip> // for setw
 #include <cmath> // for setw
@@ -293,7 +294,6 @@ namespace MultiBoost {
 
         // loads them
         us.loadHypotheses(shypFileName, weakHypotheses, pData);
-
         // where the results go
         vector< ExampleResults* > results;
 
@@ -301,7 +301,10 @@ namespace MultiBoost {
             cout << "Classifying..." << flush;
 
         // get the results
+        ggc::Timer t("testing");
+        t.start();
         computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
+        t.stop();
 
         const int numClasses = pData->getNumClasses();
         const int numExamples = pData->getNumExamples();
