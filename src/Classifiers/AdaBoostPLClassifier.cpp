@@ -52,6 +52,20 @@ namespace MultiBoost {
     // -------------------------------------------------------------------------
     // -------------------------------------------------------------------------
 
+    typedef struct thread_info
+    {
+	int tid;
+	int numIterations;
+	int low;
+	int high;
+	int numClasses;
+	int numExamples;
+	int numWorkers;
+	vector<ExampleResults*>& results;
+	vector <WeakOutput>& weakOutputs;
+	InputData *pdata;
+    }thread*;
+	
     AdaBoostPLClassifier::AdaBoostPLClassifier(const nor_utils::Args &args, int verbose)
         : _verbose(verbose), _args(args)
     {
@@ -279,6 +293,38 @@ namespace MultiBoost {
             delete (*it);
     }
 
+    void* startMerge(void* arg)  
+    {
+	    thread info = (thread) arg;
+            // for every point
+            for (int i = info->low; i < info->high; ++i)
+            {
+	     	// a reference for clarity and speed
+             	vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+
+            	// for every point
+	   	for (int t = 0; t < numIterations; ++t)
+            	{
+                	// for every class
+                	for (int l = 0; l < numClasses; ++l)
+                	{
+                    		vector<BaseLearner*> column;
+                    		AlphaReal alpha  = 0;
+                    		for (int m = 0; m < numWorkers; ++m)
+                    		{
+                        		//change to use WeakOutputs
+                        		WeakOutput weakHyp = weakOutputs[m];
+				        column.push_back(weakHyp.weakHypotheses[t]);
+				        alpha += weakHyp.weakHypotheses[t]->getAlpha();
+                    		}
+                    		alpha /= (AlphaReal) numWorkers;
+                    		currVotesVector[l] += alpha * merge(pData, column, i, l, numWorkers);
+                	}
+            	}
+            }
+	
+    }
+
     //Takes in a array of weakHypotheses rather than just one vector of weak Hypotheses
     void AdaBoostPLClassifier::computeMergeResults(InputData *pData, vector<WeakOutput>& weakOutputs, vector< ExampleResults* >& results, int numIterations, int numWorkers)
     {
@@ -319,7 +365,8 @@ namespace MultiBoost {
         // for every feature: 1..T
         //for (whyIt = weakHypotheses.begin(), t = 0;
         //     whyIt != weakHypotheses.end() && t < numIterations; ++whyIt, ++t)
-        for (int t = 0; t < numIterations; ++t)
+/*       
+	 for (int t = 0; t < numIterations; ++t)
         {
             //BaseLearner* currWeakHyp = *whyIt;
             //AlphaReal alpha = currWeakHyp->getAlpha();
@@ -348,6 +395,65 @@ namespace MultiBoost {
                 }
             }
         }
+*/
+
+	for (int i = 0; i < numExamples; ++i)
+        {
+	     // a reference for clarity and speed
+             vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
+
+            // for every point
+	    for (int t = 0; t < numIterations; ++t)
+            {
+                // for every class
+                for (int l = 0; l < numClasses; ++l)
+                {
+                    vector<BaseLearner*> column;
+                    AlphaReal alpha  = 0;
+                    for (int m = 0; m < numWorkers; ++m)
+                    {
+                        //change to use WeakOutputs
+                        WeakOutput weakHyp = weakOutputs[m];
+                        column.push_back(weakHyp.weakHypotheses[t]);
+                        alpha += weakHyp.weakHypotheses[t]->getAlpha();
+                    }
+                    alpha /= (AlphaReal) numWorkers;
+                    currVotesVector[l] += alpha * merge(pData, column, i, l, numWorkers);
+                }
+            }
+        }
+
+	pthread_t threads[numWorkers];
+	thread thread_infos[numWorkers];
+	//Parallelize
+	int rc;
+	for (int t = 0; t < numWorkers; ++t)
+	{
+		  if (i == numWorkers - 1)
+		  {
+		    thread_infos[t]->low = (t * numExamples/numWorkers);
+		    thread_infos[t]->high = numExamples;
+		  }
+		  else
+		  {
+		    thread_infos[t]->low = (t * numExamples/numWorkers);
+		    thread_infos[t]->high = ((t+1) * numExamples/numWorkers) ;
+		  }
+		thread[t]->tid = t;
+		thread[t]->numClasses = numClasses;
+		thread[t]->numIterations = numIterations;
+		thread[t]->numWorkers = numWorkers;
+		thread[t]->results = results;
+		thread[t]->weakOutputs = weakOutputs;
+		thread[t]->pdata = pdata;
+		rc = pthread_create(&threads[t], NULL, startMerge, (void *)thread); 
+      		if (rc) {
+         		printf("ERROR; return code from pthread_create() 
+              		  is %d\n", rc);
+        		 exit(-1);
+         	}
+      }
+	}
 
         if (pOutInfo)
             delete pOutInfo;
