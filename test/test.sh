@@ -19,4 +19,4 @@ echo "-------------------------------------------------------------"
 ~/multiboostOLD/build/multiboost --fileformat arff --cmatrix pendigitsTest.arff shypSingleStumpOLD.xml OUTPUTOLD.txt
 
 diff -s OUTPUT.txt OUTPUTOLD.txt
-# TODO: Python confusion matrix??
+python confusion.py
