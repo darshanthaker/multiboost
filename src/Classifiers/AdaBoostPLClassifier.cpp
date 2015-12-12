@@ -391,33 +391,6 @@ namespace MultiBoost {
                     true // endline
                     );
         }
-/*
-        for (int i = 0; i < numExamples; ++i)
-        {
-            // a reference for clarity and speed
-            vector<AlphaReal>& currVotesVector = results[i]->getVotesVector();
-
-            // for every point
-            for (int t = 0; t < numIterations; ++t)
-            {
-                // for every class
-                for (int l = 0; l < numClasses; ++l)
-                {
-                    vector<BaseLearner*> column;
-                    AlphaReal alpha  = 0;
-                    for (int m = 0; m < numWorkers; ++m)
-                    {
-                        //change to use WeakOutputs
-                        WeakOutput weakHyp = weakOutputs[m];
-                        column.push_back(weakHyp.weakHypotheses[t]);
-                        alpha += weakHyp.weakHypotheses[t]->getAlpha();
-                    }
-                    alpha /= (AlphaReal) numWorkers;
-                    currVotesVector[l] += alpha * merge(pData, column, (int)i, (int)l, (int)numWorkers);
-                }
-            }
-        }
-*/
 
         pthread_t threads[numWorkers];
 	pthread_barrier_init(&barrier, NULL, numWorkers + 1);
