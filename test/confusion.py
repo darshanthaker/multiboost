@@ -136,6 +136,8 @@ def main():
             print "F1 is off: " + str(math.fabs(oldf1 - newf1))
         if (math.fabs(oldmcc - newmcc) > THRESHOLD):
             print "MCC is off: " + str(math.fabs(oldmcc - newmcc))
+        print "oldacc: " + str(oldacc)
+        print "newacc: " + str(newacc)
         """
         print "oldtpr: " + str(oldtpr)
         print "oldtnr: " + str(oldtnr)
