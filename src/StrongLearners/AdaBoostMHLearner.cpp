@@ -430,9 +430,9 @@ namespace MultiBoost {
         if (_verbose > 0)
             cout << "Learning completed." << endl;
         t.stop();
-        if (!_isParallel) {
-            printf("Training time from MH is: %llu\n", t.duration());     
-        }
+        //#if (!_isParallel) {
+        //    printf("Training time from MH is: %llu\n", t.duration());     
+        //}
     }
 
     // -------------------------------------------------------------------------

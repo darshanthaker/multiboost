@@ -75,6 +75,15 @@ def main():
         oldfn = oldconfusion[1]
         oldfp = oldconfusion[2]
         oldtn = oldconfusion[3]
+
+        if (oldtp == 0):
+            continue
+        if (oldfn == 0):
+            continue
+        if (oldfp == 0):
+            continue
+        if (oldtn == 0):
+            continue
         
         oldtpr = oldtp/(oldtp + oldfn)
         oldtnr = oldtn/(oldtn + oldfp)
@@ -91,6 +100,14 @@ def main():
         newfn = newconfusion[1]
         newfp = newconfusion[2]
         newtn = newconfusion[3]
+        if (newtp == 0):
+            continue
+        if (newfn == 0):
+            continue
+        if (newfp == 0):
+            continue
+        if (newtn == 0):
+            continue
         
         newtpr = newtp/(newtp + newfn)
         newtnr = newtn/(newtn + newfp)
