@@ -497,6 +497,7 @@ namespace MultiBoost {
         t.start();
         computeMergeResults( pData, weakOutputs, results, (int) weakOutputs[0].weakHypotheses.size(), (int) weakOutputs.size());
         t.stop();
+        printf("Testing time is: %llu \n", t.duration());
         // get the results
         //computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size() );
 

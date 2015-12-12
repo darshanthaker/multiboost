@@ -569,11 +569,7 @@ int main(int argc, const char* argv[])
         string baseLearnerName = UnSerialization::getWeakLearnerName(shypFileName);
         BaseLearner*  pWeakHypothesisSource = BaseLearner::RegisteredLearners().getLearner(baseLearnerName);
         pModel = pWeakHypothesisSource->createGenericStrongLearner( args );
-        ggc::Timer t("testing");
-        t.start();         
         pModel->doConfusionMatrix(args);
-        t.stop();
-        printf("Testing time is: %llu \n", t.duration());
     }
     //////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////
