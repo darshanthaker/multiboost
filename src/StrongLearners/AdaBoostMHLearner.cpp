@@ -171,6 +171,7 @@ namespace MultiBoost {
     void AdaBoostMHLearner::run(const nor_utils::Args& args)
     {
         ggc::Timer t("training");
+        t.start();
         // load the arguments
         this->getArgs(args);
 
@@ -287,7 +288,6 @@ namespace MultiBoost {
         ///////////////////////////////////////////////////////////////////////
 //        _currentMinT = startingIteration; // early stopping
         //TODO: Start timer here
-        t.start();
 
 		if (_earlyStoppingDone)
 			startingIteration = _numIterations;
@@ -361,7 +361,6 @@ namespace MultiBoost {
 
             // append the current weak learner to strong hypothesis file,
             // that is, serialize it.
-            t.stop();
             ss.appendHypothesis(t, pWeakHypothesis);
 
             // Add it to the internal list of weak hypotheses
@@ -411,9 +410,6 @@ namespace MultiBoost {
             delete pWeakHypothesis;
         }  // loop on iterations
         /////////////////////////////////////////////////////////
-        if (!_isParallel) {
-            printf("Training time from MH is: %llu\n", t.duration());     
-        }
 
         // write the footer of the strong hypothesis file
         ss.writeFooter();
@@ -433,6 +429,10 @@ namespace MultiBoost {
 
         if (_verbose > 0)
             cout << "Learning completed." << endl;
+        t.stop();
+        if (!_isParallel) {
+            printf("Training time from MH is: %llu\n", t.duration());     
+        }
     }
 
     // -------------------------------------------------------------------------
