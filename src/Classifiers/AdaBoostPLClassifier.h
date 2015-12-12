@@ -108,7 +108,11 @@ namespace MultiBoost {
          * \date 16/11/2005
          */
         AdaBoostPLClassifier(const nor_utils::Args& args, int verbose = 1);
-                
+
+        static void declareBaseArguments(nor_utils::Args& args) {
+            args.setGroup("AdaBoostPLClassifier Options");
+            args.declareArgument("nworkers2", "number of workers", 1, "<number>" );
+        }           
         /**
          * Starts the classification process. 
          * \param dataFileName The file name of the data to be classified.
@@ -297,6 +301,7 @@ namespace MultiBoost {
          */
         int      _verbose;
         int _nWorkers;
+        int _nThreads;
                 
         const nor_utils::Args&  _args;  //!< The arguments defined by the user.
         string   _outputInfoFile; //!< The filename of the step-by-step information file that will be updated 

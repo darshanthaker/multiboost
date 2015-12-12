@@ -152,6 +152,7 @@
 #include "WeakLearners/ParasiteLearner.h" // for --encode
 #include "StrongLearners/AdaBoostMHLearner.h" // for --encode
 #include "StrongLearners/AdaBoostPLLearner.h"
+#include "Classifiers/AdaBoostPLClassifier.h"
 #include "StrongLearners/SoftCascadeLearner.h" // for declareBaseArguments
 #include "StrongLearners/VJCascadeLearner.h" // for declareBaseArguments
 #include "StrongLearners/ArcGVLearner.h" // for declareBaseArguments
@@ -397,6 +398,9 @@ int main(int argc, const char* argv[])
 
     // for AdaBoostPLLearner
     AdaBoostPLLearner::declareBaseArguments(args);
+
+    //for AdaBoostPLClassifier
+    AdaBoostPLClassifier::declareBaseArguments(args);
     //////////////////////////////////////////////////////////////////////////
     // Options
         

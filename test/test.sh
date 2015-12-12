@@ -9,9 +9,9 @@ make
 
 cd ~/multiboost/test
 
-~/multiboost/build/multiboost --stronglearner AdaBoostPL --nworkers 7 --fileformat arff --train pendigitsTrain.arff 200 --verbose 0 --learnertype SingleStumpLearner --outputinfo resultsSingleStump.dta --shypname shypSingleStump.xml 
+~/multiboost/build/multiboost --stronglearner AdaBoostPL --nworkers 7 --nworkers2 3 --fileformat arff --train pendigitsTrain.arff 200 --verbose 0 --learnertype SingleStumpLearner --outputinfo resultsSingleStump.dta --shypname shypSingleStump.xml 
 
-~/multiboost/build/multiboost --stronglearner AdaBoostPL --nworkers 7 --fileformat arff --cmatrix pendigitsTest.arff shypSingleStump0.xml OUTPUT.txt
+~/multiboost/build/multiboost --stronglearner AdaBoostPL --nworkers 7 --nworkers2 3 --fileformat arff --cmatrix pendigitsTest.arff shypSingleStump0.xml OUTPUT.txt
 
 echo "-------------------------------------------------------------"
 
