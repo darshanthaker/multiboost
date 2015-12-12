@@ -47,9 +47,12 @@
 #include <vector>
 #include <iostream>
 #include <string>
+#include<pthread.h>
 
 namespace MultiBoost {
 
+
+    pthread_barrier_t barrier;
     // -------------------------------------------------------------------------
     // -------------------------------------------------------------------------
 
@@ -97,8 +100,9 @@ namespace MultiBoost {
         const int numClasses = pData->getNumClasses();
 
         if (_verbose > 0)
-        {
-            // well.. if verbose = 0 no results are displayed! :)
+        {            
+
+	    // well.. if verbose = 0 no results are displayed! :)
             cout << "Done!" << endl;
 
             vector< vector<float> > rankedError(numRanksEnclosed);
@@ -222,10 +226,11 @@ namespace MultiBoost {
 
         if (_verbose > 0)
             cout << "Classifying..." << flush;
-
+	
         // get the results
         computeResults( pData, weakHypotheses, results, (int)weakHypotheses.size());
-
+	
+	
         const int numClasses = pData->getNumClasses();
         const int numExamples = pData->getNumExamples();
 
@@ -280,7 +285,7 @@ namespace MultiBoost {
             delete (*it);
     }
 
-    /*void* startMerge(void* arg)  
+    void* startMerge(void* arg)  
     {
         ThreadInfoPL *info  = (ThreadInfoPL*) arg;
         int newtid = info->tid;
@@ -294,6 +299,8 @@ namespace MultiBoost {
         vector<WeakOutput>& newweakOutputs = info->weakOutputs;
         InputData *newpData = info->pData;
         // for every point
+	printf("Low = %d, High = %d\n", info->low, info->high);
+
         for (int i = info->low; i < info->high; ++i)
         {
             // a reference for clarity and speed
@@ -315,19 +322,44 @@ namespace MultiBoost {
                         alpha += weakHyp.weakHypotheses[t]->getAlpha();
                     }
                     alpha /= (AlphaReal) info->numWorkers;
-                    currVotesVector[l] += alpha * merge(info->pData, column, i, l, info->numWorkers);
+		    //printf("alpha = %f\n", alpha);
+		    
+		    int mergeVal;
+
+		    int counter = 0;
+		    vector<BaseLearner*>::const_iterator whyIt;
+
+		    int m;
+		    for (whyIt = column.begin(), m = 0; whyIt != column.end() && m < info->numWorkers; ++whyIt, ++m) {
+			BaseLearner* currWeakHypothesis = *whyIt;
+			if (currWeakHypothesis->classify(info->pData, i, l) > 0) counter++;
+			else counter--;
+		    }
+		    if (counter > 0) mergeVal =  1;
+		    else if (counter == 0) mergeVal = 0;
+		    else mergeVal = -1;
+
+    		    //printf("mergeval = %d\n", mergeVal);
+		    currVotesVector[l] += alpha * mergeVal;
+		    //printf("i = %d, l = %d\n", i, l);
+
+                   // currVotesVector[l] += alpha * merge(info->pData, column, i, l, info->numWorkers);
                 }
             }
         }
-    }*/
+	pthread_barrier_wait(&barrier);
+    }
 
     //Takes in a array of weakHypotheses rather than just one vector of weak Hypotheses
     void AdaBoostPLClassifier::computeMergeResults(InputData *pData, vector<WeakOutput>& weakOutputs, vector< ExampleResults* >& results, int numIterations, int numWorkers)
     {
+	printf("COMPUTING MERGE RESULTS\n");
         //assert( !weakHypotheses.empty() );
 
         const int numClasses = pData->getNumClasses();
         const int numExamples = pData->getNumExamples();
+
+	printf("No Segfault...yet\n");	
 
         // Initialize the output info
         OutputInfo* pOutInfo = NULL;
@@ -344,6 +376,8 @@ namespace MultiBoost {
         results.reserve(numExamples);
         for (int i = 0; i < numExamples; ++i)
             results.push_back( new ExampleResults(i, numClasses) );
+	
+	printf("No Segfault...yet again\n");	
 
         // iterator over all the weak hypotheses
         vector<BaseLearner*>::const_iterator whyIt;
@@ -357,7 +391,7 @@ namespace MultiBoost {
                     true // endline
                     );
         }
-
+/*
         for (int i = 0; i < numExamples; ++i)
         {
             // a reference for clarity and speed
@@ -379,15 +413,17 @@ namespace MultiBoost {
                         alpha += weakHyp.weakHypotheses[t]->getAlpha();
                     }
                     alpha /= (AlphaReal) numWorkers;
-                    currVotesVector[l] += alpha * merge(pData, column, i, l, numWorkers);
+                    currVotesVector[l] += alpha * merge(pData, column, (int)i, (int)l, (int)numWorkers);
                 }
             }
         }
+*/
 
-        /*pthread_t threads[numWorkers];
-        //ThreadInfoPL *thread_infos[numWorkers];
-        //Parallelize
+        pthread_t threads[numWorkers];
+	pthread_barrier_init(&barrier, NULL, numWorkers + 1);
+        ThreadInfoPL *thread_infos[numWorkers];
         int rc;
+	printf("NumExamples is: %d\n", numExamples);
         for (int i = 0; i < numWorkers; i++)
         {
             int low = (i * numExamples/numWorkers);
@@ -400,14 +436,20 @@ namespace MultiBoost {
             {
                 high = ((i+1) * numExamples/numWorkers);
             }
-            ThreadInfoPL *thread_infos = new ThreadInfoPL(i, numClasses, numIterations,
+	    printf("Low = %d, High = %d\n", low, high);
+            thread_infos[i] = new ThreadInfoPL(i, numClasses, numIterations,
                 numWorkers, numExamples, results, weakOutputs, pData, low, high);
-            rc = pthread_create(&threads[i], NULL, startMerge, (void *)thread_infos); 
+	    //printf("Info low = %d, Info high = %d\n", thread_infos[]->low, thread_infos->high);
+            rc = pthread_create(&threads[i], NULL, startMerge, (void *)(thread_infos[i])); 
             if (rc) {
                 printf("Error creating thread\n");
                 exit(-1);
             }
-        }*/
+        }
+
+	pthread_barrier_wait(&barrier);
+
+
     }
 
 int AdaBoostPLClassifier::merge(InputData *pData, vector<BaseLearner*>& column, int point, int label, int numWorkers) {
@@ -517,13 +559,17 @@ void AdaBoostPLClassifier::saveConfusionMatrix(const string& dataFileName, const
     if (_verbose > 0)
         cout << "Done!" << endl;
 
+
+
     // delete the input data file
     if (pData)
         delete pData;
 
     vector<ExampleResults*>::iterator it;
     for (it = results.begin(); it != results.end(); ++it)
-        delete (*it);
+    {
+	  delete (*it);
+    }
 }
 
 // -------------------------------------------------------------------------
