@@ -58,6 +58,7 @@ namespace MultiBoost {
     WeakOutput **weakOutputs;
     // -----------------------------------------------------------------------------------
 
+
     void AdaBoostPLLearner::getArgs(const nor_utils::Args& args)
     {
 
@@ -183,7 +184,7 @@ namespace MultiBoost {
         ifstream infile; 
         string data;
         infile.open(_trainFileName.c_str());
-        while (data.compare("@DATA") != 0) {
+        while (data.compare("@DATA") != 0 && data.compare("@data") != 0) {
             getline(infile, data);
             for (int i = 0; i < _nWorkers; i++) {
                 partition_data->outfiles[i] << data << '\n'; 
@@ -219,6 +220,11 @@ namespace MultiBoost {
 
     // -----------------------------------------------------------------------------------
 
+    bool sortLearner(BaseLearner* learner1, BaseLearner* learner2)
+    {
+        return (learner1->getAlpha() < learner2->getAlpha());
+    }
+
     void* startWorker(void* arg)  
     {
         ThreadInfo *info = (ThreadInfo *) arg;
@@ -241,6 +247,7 @@ namespace MultiBoost {
         MHLearner->run(info->args, pTrainingData, "SingleStumpLearner",
                 numIterations, weakOutputs[tid]->weakHypotheses);
         pthread_barrier_wait(&workerBarrier);
+        std::sort(weakOutputs[tid]->weakHypotheses.begin() ,weakOutputs[tid]->weakHypotheses.end(), sortLearner);
         pthread_exit(NULL);	
     }
 
@@ -285,9 +292,11 @@ namespace MultiBoost {
         }	
         pthread_barrier_wait(&workerBarrier);
 
+
+
         deletePartitions(); 
         t.stop();
-	    printf("Training time is : %llu \n",t.duration());
+        printf("Training time is : %llu \n",t.duration());
     }
 
     // -------------------------------------------------------------------------
