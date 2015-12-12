@@ -75,7 +75,6 @@ namespace MultiBoost {
             delete fileNames;
         }
     };
-    
 
     class WeakOutput{
     public:
